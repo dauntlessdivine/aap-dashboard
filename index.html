@@ -1,0 +1,878 @@
+<!doctype html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Aap Study Dashboard",
+  "schemaVersion": 1,
+  "description": "AAP Study Dashboard — pastel-themed tracker for the full certification. Top: overall-program ring + per-track rings (Modules 301–326, Vedic Formulations, Ashtanga Hridayam, Sanskrit, Internship) with expandable track bars. Nested dropdowns: 26 modules (302 & 303 detailed, each with Readings/Recordings/Slides/Test bars), Formulations (71 classes, PDF+recording, per-part class bars), Sanskrit (15 monthly classes, PDF+recording), Ashtanga Hridayam (weekly rec/live Aug 2026–May 2029 with per-part bars), and the 505-hr internship/trip plan. Progress saves in localStorage."
+}
+</script>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AAP — Study Dashboard</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f3f1fa; --card:#ffffff; --card2:#faf8fd; --line:#ece7f2;
+  --ink:#403b52; --mut:#8c869c; --mut2:#b0aabf;
+  --tw:#ece7f2;                         /* ring / bar well */
+  --lav:#a99bd6; --mint:#79c6a6; --peach:#f1a988; --sky:#8ec2e8;
+  --rose:#e9a1c1; --butter:#e6c983; --sage:#9ac795; --teal:#7cc4c0;
+  --shadow:0 1px 3px rgba(90,70,130,.06),0 8px 24px rgba(90,70,130,.06);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:16.9px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:100%;width:100%;margin:0 auto;padding:26px clamp(14px,3vw,44px) 90px}
+h1{font-size:31.6px;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--mut);font-size:16.4px;margin-bottom:22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}
+.pad{padding:22px 24px}
+.section{margin-top:16px}
+
+/* master overview */
+.ov-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.ov-title{font-weight:700;font-size:19.6px}
+.ov-note{color:var(--mut);font-size:14.7px}
+.ov-grid{display:flex;gap:22px;align-items:center;flex-wrap:nowrap;justify-content:center}
+.ov-big{flex:0 0 auto}
+.rings{display:flex;flex-wrap:nowrap;gap:12px;justify-content:space-between;flex:1 1 auto}
+.ring{text-align:center;padding:4px 2px}
+.ring svg{display:block;margin:0 auto 7px}
+.ring .rv{font-weight:700;fill:var(--ink)}
+.ring .rp{fill:var(--mut2)}
+.ring .lab{font-size:14.2px;font-weight:700;color:var(--ink);letter-spacing:.01em}
+.ring .cnt{font-size:13.1px;color:var(--mut)}
+.ov-big .lab{font-size:15.8px}
+details.bars{margin-top:18px;border-top:1px dashed var(--line);padding-top:14px}
+details.bars>summary{cursor:pointer;color:var(--lav);font-weight:700;font-size:14.7px;list-style:none}
+details.bars>summary::-webkit-details-marker{display:none}
+details.bars>summary::before{content:"▸ ";color:var(--mut2)}
+details.bars[open]>summary::before{content:"▾ "}
+.bar-row{display:grid;grid-template-columns:170px 1fr 150px;gap:12px;align-items:center;margin:11px 0}
+.bar-row .bl{font-size:15.3px;font-weight:600}
+.bar-row .bc{font-size:13.6px;color:var(--mut);text-align:right}
+.track{height:11px;background:var(--tw);border-radius:7px;overflow:hidden}
+.fill{height:100%;border-radius:7px;transition:width .35s ease}
+
+/* section dropdowns */
+details.sec{margin-top:15px}
+details.sec>summary{cursor:pointer;list-style:none;padding:17px 20px;background:var(--card);
+  border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  display:flex;align-items:center;gap:13px}
+details.sec[open]>summary{border-radius:14px 14px 0 0;border-bottom:none}
+details.sec>summary::-webkit-details-marker{display:none}
+.sec-caret{color:var(--lav);font-size:15.3px;transition:transform .2s}
+details.sec[open] .sec-caret{transform:rotate(90deg)}
+.sec-name{font-weight:700;font-size:19.1px}
+.sec-bar{flex:0 1 210px;min-width:90px;margin-left:auto}
+.sec-bar .track{height:10px}
+.sec-meta{color:var(--mut);font-size:14.2px;text-align:right;flex:none;min-width:96px}
+.sec-body{border:1px solid var(--line);border-top:none;border-radius:0 0 14px 14px;
+  background:var(--card);padding:8px 16px 16px}
+
+/* module */
+details.mod{border-bottom:1px solid var(--line)}
+details.mod:last-child{border-bottom:none}
+details.mod>summary{cursor:pointer;list-style:none;padding:14px 6px;display:flex;gap:13px;align-items:flex-start}
+details.mod>summary::-webkit-details-marker{display:none}
+.mc{font-weight:700;font-size:16.9px;color:var(--lav);white-space:nowrap}
+.mt{font-weight:600;font-size:16.4px}
+.md{color:var(--mut);font-size:14.2px;margin-top:2px}
+.mcaret{color:var(--mut2);font-size:14.2px;margin-top:3px;transition:transform .2s}
+details.mod[open] .mcaret{transform:rotate(90deg)}
+.pill{font-size:12px;font-weight:700;letter-spacing:.03em;padding:3px 10px;border-radius:20px;
+  text-transform:uppercase;white-space:nowrap}
+.pill.done{background:#e2f3ea;color:#3f8a68}
+.pill.active{background:#fdeede;color:#c07f3a}
+.pill.todo{background:#efecf5;color:var(--mut)}
+.mini-wrap{display:flex;flex-wrap:wrap;gap:16px;margin:6px 0 4px}
+.mini{flex:1 1 130px;min-width:130px}
+.mini .ml{display:flex;justify-content:space-between;font-size:13.1px;color:var(--mut);margin-bottom:4px}
+.mini .ml b{color:var(--ink);font-weight:600}
+.mini .track{height:8px}
+.mod-inner{padding:4px 4px 12px}
+.plan-note{color:var(--mut);font-size:14.7px;font-style:italic;padding:9px 2px}
+
+/* sessions */
+.ses{padding:12px 0;border-top:1px solid var(--line)}
+.ses:first-child{border-top:none}
+.ses-h{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.ses-date{font-weight:700;font-size:14.7px}
+.ses-title{font-size:14.7px;color:#5b556b}
+.ses-pp{font-size:12.5px;color:var(--mut);background:var(--card2);border:1px solid var(--line);
+  border-radius:20px;padding:1px 9px;margin-left:auto}
+.item{display:flex;gap:10px;align-items:flex-start;padding:4px 0 4px 4px}
+.tag{font-size:10.9px;font-weight:700;letter-spacing:.05em;color:var(--mut2);
+  width:62px;flex:none;padding-top:2px;text-transform:uppercase}
+.tag.read{color:#bf9a3f}.tag.lecture{color:#d38a63}.tag.slides{color:#5c9fce}
+.tag.test{color:#4aa079}.tag.prep{color:var(--mut)}
+.itx{font-size:14.7px}
+label.ck{display:flex;gap:10px;align-items:flex-start;cursor:pointer;flex:1}
+input[type=checkbox]{appearance:none;-webkit-appearance:none;width:17px;height:17px;flex:none;
+  border:1.8px solid var(--mut2);border-radius:5px;margin:1px 0 0;cursor:pointer;position:relative;background:#fff}
+input[type=checkbox]:checked{background:var(--mint);border-color:var(--mint)}
+input[type=checkbox]:checked::after{content:"";position:absolute;left:5px;top:1px;width:4px;height:9px;
+  border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.done-row .itx,.done-row .tag{text-decoration:line-through;opacity:.5}
+
+/* sub dropdowns (formulations / sanskrit / ah) */
+details.sub{border-bottom:1px solid var(--line)}
+details.sub:last-child{border-bottom:none}
+details.sub>summary{cursor:pointer;list-style:none;padding:12px 4px;display:flex;gap:12px;align-items:center}
+details.sub>summary::-webkit-details-marker{display:none}
+.subcaret{color:var(--mut2);font-size:13.1px;transition:transform .2s;flex:none}
+details.sub[open] .subcaret{transform:rotate(90deg)}
+.sub-name{font-weight:700;font-size:15.8px;white-space:nowrap}
+.sub-meta{margin-left:auto;color:var(--mut);font-size:13.6px}
+.sub-bar{flex:1;max-width:420px;margin-left:12px}
+
+/* progress bars (parts) */
+.pbar{display:grid;grid-template-columns:66px 1fr 46px;gap:10px;align-items:center;margin:6px 0}
+.pbar.nolabel{grid-template-columns:1fr 46px}
+.pbl{font-size:14.2px;color:var(--mut);font-weight:600}
+.pbc{font-size:13.6px;color:var(--mut);text-align:right}
+.pbar .track{height:9px}
+.pbar-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:8px 2px 14px}
+.pbar-head{font-weight:700;font-size:14.7px;margin-bottom:6px;color:var(--ink)}
+.san-bar{padding:6px 2px 12px;max-width:520px}
+
+/* formulation / sanskrit rows */
+.frow{display:grid;grid-template-columns:150px 1fr auto;gap:12px;align-items:center;
+  padding:9px 4px;border-top:1px solid var(--line)}
+.frow .fd{font-size:13.6px;color:var(--mut)}
+.frow .ft{font-size:14.7px}.frow .ft b{font-weight:700;margin-right:6px}
+.frow.fdone .ft{opacity:.55}.frow.fdone .ft b{text-decoration:line-through}
+.fboxes{display:flex;gap:16px;flex-wrap:wrap}
+.fbox{display:flex;gap:7px;align-items:center;font-size:13.6px;color:var(--mut)}
+
+/* assignment rows */
+.arow{display:grid;grid-template-columns:118px 1fr;gap:14px;align-items:center;
+  padding:9px 4px;border-top:1px solid var(--line)}
+.arow .al{font-size:14.7px}.arow .al b{font-weight:700}
+.arow.asubmit{background:var(--card2);border-radius:9px;margin-top:6px;padding:10px 8px;border-top:none}
+.arow.asubmit .al b{color:var(--sage)}
+.arow.arowdone .al{opacity:.55}.arow.arowdone .al b{text-decoration:line-through}
+
+/* AH weeks */
+.week{padding:10px 4px;border-top:1px solid var(--line);display:grid;
+  grid-template-columns:104px 1fr;gap:12px;align-items:start}
+.week .wl{font-size:13.6px;color:var(--mut);padding-top:2px}
+.witems{display:flex;flex-direction:column;gap:6px}
+.witem{display:flex;gap:9px;align-items:flex-start}
+.wtag{font-size:10.9px;font-weight:700;width:38px;flex:none;padding-top:2px;letter-spacing:.04em}
+.wtag.REC{color:var(--mut2)}.wtag.LIVE{color:#d873a5}
+.wx{font-size:14.2px}.wx .pt{color:var(--mut2)}
+/* AH months in two columns */
+.ah-months{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;align-items:start;margin-top:4px}
+.ah-months>details.sub{border:1px solid var(--line);border-radius:11px;padding:0 12px}
+.ah-months>details.sub>summary{padding:12px 2px}
+/* Formulation parts in two columns */
+.form-parts{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;align-items:start;margin-top:4px}
+.form-parts>details.sub{border:1px solid var(--line);border-radius:11px;padding:0 12px}
+.form-parts>details.sub>summary{padding:12px 2px}
+.form-parts .sub-bar{max-width:none}
+/* weekend-intensive block inside a module */
+.intensive-block{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:8px 12px 10px;margin:4px 2px 10px}
+.intensive-lab{font-weight:700;font-size:13.6px;color:var(--lav);margin:2px 0 2px}
+.intensive-block .arow{grid-template-columns:150px 1fr}
+
+/* internship */
+.hours-summary{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:6px 2px 8px}
+.hours-summary .bar-row{grid-template-columns:230px 1fr 120px;margin:9px 0}
+.hours-cap{color:var(--mut);font-size:12.6px;margin-top:8px;font-style:italic}
+.itab{width:100%;border-collapse:collapse;margin:6px 0 4px}
+.itab th,.itab td{text-align:left;font-size:14.7px;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.itab th{color:var(--mut);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.03em}
+.itab td.hh{white-space:nowrap;font-weight:600}
+.blocklab{font-weight:700;font-size:14.7px;color:var(--lav);margin:18px 2px 4px}
+.opt{font-size:14.2px;color:var(--mut);padding:5px 2px;border-top:1px dashed var(--line)}
+.opt b{color:var(--ink)}
+
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:22px;
+  color:var(--mut);font-size:14.2px;padding:0 4px;flex-wrap:wrap;gap:10px}
+.foot-btns{display:flex;gap:8px;flex-wrap:wrap}
+button.reset{font:inherit;font-size:14.2px;color:var(--mut);background:var(--card);
+  border:1px solid var(--line);border-radius:9px;padding:7px 14px;cursor:pointer}
+button.reset:hover{color:var(--lav);border-color:var(--lav)}
+#backupBtn,#restoreBtn{color:var(--ink);font-weight:600}
+/* modal */
+.modal{display:none;position:fixed;inset:0;background:rgba(64,59,82,.34);
+  align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal.open{display:flex}
+.modal-card{background:var(--card);border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 12px 40px rgba(64,59,82,.25);max-width:460px;width:100%;padding:22px}
+.modal-title{font-weight:700;font-size:18.5px;margin-bottom:6px}
+.modal-note{color:var(--mut);font-size:14.7px;margin-bottom:12px}
+#modalText{width:100%;height:104px;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:13.1px;color:var(--ink);background:var(--card2);border:1px solid var(--line);
+  border-radius:10px;padding:10px;line-height:1.4}
+.modal-actions{display:flex;gap:8px;margin-top:12px}
+#modalPrimary{color:#fff;background:var(--lav);border-color:var(--lav);font-weight:700}
+#modalPrimary:hover{filter:brightness(.96);color:#fff}
+.modal-msg{font-size:13.6px;color:var(--mint);margin-top:9px;min-height:16px;font-weight:600}
+.modal-msg.err{color:var(--peach)}
+/* timeline */
+.tl-title{font-weight:700;font-size:17.4px;margin-bottom:2px}
+.tl-note{color:var(--mut);font-size:14.2px;margin-bottom:14px}
+.tl-scroll{overflow-x:auto;padding-bottom:4px}
+.tl-grid{display:grid;grid-template-columns:44px repeat(12,minmax(58px,1fr));gap:5px;min-width:760px}
+.tl-h{font-size:12.5px;font-weight:700;color:var(--mut);text-align:center;padding:2px 0}
+.tl-y{font-size:14.7px;font-weight:700;color:var(--ink);display:flex;align-items:center}
+.tl-cell{min-height:40px;border-radius:9px;background:#f2eff7;border:1px solid var(--line);
+  padding:4px;display:flex;flex-direction:column;gap:3px}
+.tl-cell.empty{background:#f7f5fb;border-style:dashed;border-color:#efeaf4}
+.pilltl{font-size:11.4px;font-weight:700;line-height:1.15;border-radius:6px;padding:3px 5px;color:#4a4550}
+.p-int{background:#cdeadd;color:#357a5a}       /* weekend intensive (livestream) - green */
+.p-inperson{background:#f7cfa1;color:#8f571b} /* in person: module / practicum - orange */
+.p-usintern{background:#f6c5c0;color:#a5453c} /* US internship - pastel red */
+.p-india{background:#f6d0e6;color:#9c4c81}    /* india internship - pink */
+.p-elec{background:#dcc9f2;color:#6a4aa0}      /* elective - purple */
+.p-study{background:#d3e8f7;color:#37699a}     /* self-study / catch-up - sky */
+.p-light{background:#eceaf2;color:var(--mut)} /* light / wind-down */
+.p-end{background:#f6ea9e;color:#867216}      /* orientation & program milestone - pastel yellow */
+.tl-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px}
+.tl-leg{display:flex;align-items:center;gap:7px;font-size:13.6px;color:var(--mut)}
+.tl-sw{width:16px;height:12px;border-radius:4px;flex:none}
+
+@media(max-width:1160px){
+  .ov-grid,.rings{flex-wrap:wrap;justify-content:center}
+}
+@media(max-width:640px){
+  .bar-row{grid-template-columns:120px 1fr 96px}
+  .sec-meta{display:none}
+  .sec-bar{flex:1}
+  .frow{grid-template-columns:1fr;gap:5px}
+  .pbar-cols{grid-template-columns:1fr}
+  .sub-bar{max-width:none}
+  .ah-months,.form-parts{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AAP — Study Dashboard</h1>
+  <div class="sub">Advanced Ayurvedic Practitioner · 2026–2029 · Michelle Christy — every track in one place</div>
+
+  <div class="card pad section" id="overview"></div>
+
+  <div class="card pad section" id="timeline"></div>
+
+  <div id="sections"></div>
+
+  <div class="foot">
+    <span>Progress saves automatically on this device. To move it to another device, use&nbsp;Back&nbsp;up&nbsp;→&nbsp;Restore.</span>
+    <span class="foot-btns">
+      <button class="reset" id="backupBtn">⭱ Back up</button>
+      <button class="reset" id="restoreBtn">⭳ Restore</button>
+      <button class="reset" id="resetBtn">Reset</button>
+    </span>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-note" id="modalNote"></div>
+    <textarea id="modalText" spellcheck="false"></textarea>
+    <div class="modal-actions">
+      <button class="reset" id="modalPrimary"></button>
+      <button class="reset" id="modalClose">Close</button>
+    </div>
+    <div class="modal-msg" id="modalMsg"></div>
+  </div>
+</div>
+
+<script>
+const DATA = {"modules": [{"code": "301", "title": "Preventative Health Management (Swasthavritta)", "date": "May 15–17, 2026", "status": "done", "intensive": [{"dow": "Fri", "date": "May 15", "n": 1}, {"dow": "Sat", "date": "May 16", "n": 2}, {"dow": "Sun", "date": "May 17", "n": 3}]}, {"code": "302", "title": "Ayurvedic Etiopathogenesis Part I (Roga Vijnana & Vikriti Vijnana)", "date": "June 12–14, 2026", "status": "active", "intensive": [{"dow": "Fri", "date": "Jun 12", "n": 1}, {"dow": "Sat", "date": "Jun 13", "n": 2}, {"dow": "Sun", "date": "Jun 14", "n": 3}]}, {"code": "303", "title": "Ayurvedic Etiopathogenesis Part II (Roga Vijnana & Vikriti Vijnana)", "date": "July 24–26, 2026", "status": "active", "intensive": [{"dow": "Fri", "date": "Jul 24", "n": 1}, {"dow": "Sat", "date": "Jul 25", "n": 2}, {"dow": "Sun", "date": "Jul 26", "n": 3}]}, {"code": "304", "title": "Ayurvedic Materia Medica Part I (Dravyaguna Sastra)", "date": "Aug 28–30, 2026", "status": "todo", "intensive": [{"dow": "Fri", "date": "Aug 28", "n": 1}, {"dow": "Sat", "date": "Aug 29", "n": 2}, {"dow": "Sun", "date": "Aug 30", "n": 3}]}, {"code": "305", "title": "Ayurvedic Pharmaceutics (Bhaishajya Kalpana)", "date": "Nov 13–15, 2026", "status": "todo", "intensive": [{"dow": "Fri", "date": "Nov 13", "n": 1}, {"dow": "Sat", "date": "Nov 14", "n": 2}, {"dow": "Sun", "date": "Nov 15", "n": 3}]}, {"code": "306", "title": "Ayurvedic Purification — Clinical Application (Panchakarma in Chikitsa)", "date": "Jan 15–17, 2027", "status": "todo", "intensive": [{"dow": "Fri", "date": "Jan 15", "n": 1}, {"dow": "Sat", "date": "Jan 16", "n": 2}, {"dow": "Sun", "date": "Jan 17", "n": 3}]}, {"code": "307", "title": "Ayurvedic Materia Medica Part 2 (Dravyaguna Sastra)", "date": "Feb 26–28, 2027", "status": "todo", "intensive": [{"dow": "Fri", "date": "Feb 26", "n": 1}, {"dow": "Sat", "date": "Feb 27", "n": 2}, {"dow": "Sun", "date": "Feb 28", "n": 3}]}, {"code": "308", "title": "Clinical Management of Pranavaha & Udakavaha Srotases", "date": "Apr 9–11, 2027", "status": "todo", "intensive": [{"dow": "Fri", "date": "Apr 9", "n": 1}, {"dow": "Sat", "date": "Apr 10", "n": 2}, {"dow": "Sun", "date": "Apr 11", "n": 3}]}, {"code": "309", "title": "Clinical Management of Annavaha & Rasavaha Srotases", "date": "May 21–23, 2027", "status": "todo", "intensive": [{"dow": "Fri", "date": "May 21", "n": 1}, {"dow": "Sat", "date": "May 22", "n": 2}, {"dow": "Sun", "date": "May 23", "n": 3}]}, {"code": "310", "title": "Clinical Management of Raktavaha Srotas", "date": "Jun 18–20, 2027", "status": "todo", "intensive": [{"dow": "Fri", "date": "Jun 18", "n": 1}, {"dow": "Sat", "date": "Jun 19", "n": 2}, {"dow": "Sun", "date": "Jun 20", "n": 3}]}, {"code": "311", "title": "Clinical Management of Mamsavaha & Medovaha Srotases", "date": "Aug 13–15, 2027", "status": "todo", "intensive": [{"dow": "Fri", "date": "Aug 13", "n": 1}, {"dow": "Sat", "date": "Aug 14", "n": 2}, {"dow": "Sun", "date": "Aug 15", "n": 3}]}, {"code": "312", "title": "Clinical Management of Asthivaha & Majjavaha Srotas", "date": "Oct 8–10, 2027", "status": "todo", "intensive": [{"dow": "Fri", "date": "Oct 8", "n": 1}, {"dow": "Sat", "date": "Oct 9", "n": 2}, {"dow": "Sun", "date": "Oct 10", "n": 3}]}, {"code": "313", "title": "Clinical Management of Mutravaha, Pureeshavaha & Swedavaha Srotases", "date": "Nov 19–21, 2027", "status": "todo", "intensive": [{"dow": "Fri", "date": "Nov 19", "n": 1}, {"dow": "Sat", "date": "Nov 20", "n": 2}, {"dow": "Sun", "date": "Nov 21", "n": 3}]}, {"code": "314", "title": "Clinical Management of Manovaha Srotas — Mental Disorders", "date": "Jan 14–16, 2028", "status": "todo", "intensive": [{"dow": "Fri", "date": "Jan 14", "n": 1}, {"dow": "Sat", "date": "Jan 15", "n": 2}, {"dow": "Sun", "date": "Jan 16", "n": 3}]}, {"code": "325", "title": "AAP Panchakarma Practicum Level 1: Prep & Purvakarma", "date": "Jan 17–21, 2028", "status": "todo", "intensive": [{"dow": "Mon", "date": "Jan 17", "n": 1}, {"dow": "Tue", "date": "Jan 18", "n": 2}, {"dow": "Wed", "date": "Jan 19", "n": 3}, {"dow": "Thu", "date": "Jan 20", "n": 4}, {"dow": "Fri", "date": "Jan 21", "n": 5}]}, {"code": "315", "title": "Yoga in Clinical Application Part I (Yoga Chikitsa)", "date": "Feb 25–27, 2028", "status": "todo", "intensive": [{"dow": "Fri", "date": "Feb 25", "n": 1}, {"dow": "Sat", "date": "Feb 26", "n": 2}, {"dow": "Sun", "date": "Feb 27", "n": 3}]}, {"code": "316", "title": "Shalyatantra: Injuries, Kshara Karma, Agnikarma & Marma Chikitsa", "date": "Apr 7–9, 2028", "status": "todo", "intensive": [{"dow": "Fri", "date": "Apr 7", "n": 1}, {"dow": "Sat", "date": "Apr 8", "n": 2}, {"dow": "Sun", "date": "Apr 9", "n": 3}]}, {"code": "317", "title": "Shalakyatantra: Eye, Ear, Nose, Throat & Oral Disease", "date": "May 12–14, 2028", "status": "todo", "intensive": [{"dow": "Fri", "date": "May 12", "n": 1}, {"dow": "Sat", "date": "May 13", "n": 2}, {"dow": "Sun", "date": "May 14", "n": 3}]}, {"code": "326", "title": "AAP Panchakarma Practicum Level 2: Main Techniques & Specialty Therapies", "date": "May 15–19, 2028", "status": "todo", "intensive": [{"dow": "Mon", "date": "May 15", "n": 1}, {"dow": "Tue", "date": "May 16", "n": 2}, {"dow": "Wed", "date": "May 17", "n": 3}, {"dow": "Thu", "date": "May 18", "n": 4}, {"dow": "Fri", "date": "May 19", "n": 5}]}, {"code": "318", "title": "Streeroga: Artavavaha & Stanyavaha Srotas", "date": "Jun 23–25, 2028", "status": "todo", "intensive": [{"dow": "Fri", "date": "Jun 23", "n": 1}, {"dow": "Sat", "date": "Jun 24", "n": 2}, {"dow": "Sun", "date": "Jun 25", "n": 3}]}, {"code": "319", "title": "Prasooti Tantra: Pregnancy & Childbirth", "date": "Aug 18–20, 2028", "status": "todo", "intensive": [{"dow": "Fri", "date": "Aug 18", "n": 1}, {"dow": "Sat", "date": "Aug 19", "n": 2}, {"dow": "Sun", "date": "Aug 20", "n": 3}]}, {"code": "320", "title": "Kaumarabhritya: Pediatric Health", "date": "Oct 13–15, 2028", "status": "todo", "intensive": [{"dow": "Fri", "date": "Oct 13", "n": 1}, {"dow": "Sat", "date": "Oct 14", "n": 2}, {"dow": "Sun", "date": "Oct 15", "n": 3}]}, {"code": "321", "title": "Management of Immunological & Environmental Diseases", "date": "Nov 17–19, 2028", "status": "todo", "intensive": [{"dow": "Fri", "date": "Nov 17", "n": 1}, {"dow": "Sat", "date": "Nov 18", "n": 2}, {"dow": "Sun", "date": "Nov 19", "n": 3}]}, {"code": "322", "title": "Rasayana & Vajikarana: Rejuvenation & Regeneration", "date": "Dec 15–17, 2028", "status": "todo", "intensive": [{"dow": "Fri", "date": "Dec 15", "n": 1}, {"dow": "Sat", "date": "Dec 16", "n": 2}, {"dow": "Sun", "date": "Dec 17", "n": 3}]}, {"code": "323", "title": "Yoga in Clinical Application Part II (Yoga Chikitsa)", "date": "Jan 19–21, 2029", "status": "todo", "intensive": [{"dow": "Fri", "date": "Jan 19", "n": 1}, {"dow": "Sat", "date": "Jan 20", "n": 2}, {"dow": "Sun", "date": "Jan 21", "n": 3}]}, {"code": "324", "title": "Ayurvedic Toxicology, Medical Ethics & Medico-Legal Regulations", "date": "Mar 2–4, 2029", "status": "todo", "intensive": [{"dow": "Fri", "date": "Mar 2", "n": 1}, {"dow": "Sat", "date": "Mar 3", "n": 2}, {"dow": "Sun", "date": "Mar 4", "n": 3}]}], "moduleDetail": {"302": [{"num": "1", "date": "Tue Jul 21", "title": "S1 Tridoshas & dosha expressions", "pp": 25, "items": [{"t": "lecture", "x": "Basics of Roga & Vikruti Vigyana — Session 1"}, {"t": "read", "x": "Overview of Tridoshas (I, 5–21)"}, {"t": "read", "x": "Expressions of dosha increase & depletion (21–30)"}, {"t": "slides", "x": "Deck 2–17 · RemNote §1"}]}, {"num": "2", "date": "Wed Jul 22", "title": "S2 Dhatu & mala vridhi / kshaya", "pp": 19, "items": [{"t": "read", "x": "Increase & depletion of dhatus and malas (I, 30–42)"}, {"t": "read", "x": "Relationship between doshas and dhatus (50–57)"}, {"t": "slides", "x": "Deck 18–35 · RemNote §1"}]}, {"num": "3", "date": "Tue Jul 28", "title": "S3 Srotovijnaniyam — the channels", "pp": 26, "items": [{"t": "lecture", "x": "Basics of Roga & Vikruti Vigyana — Session 2"}, {"t": "read", "x": "Understanding the channel systems / Srotovijnaniyam (I, 238–264)"}, {"t": "slides", "x": "Deck 36–66 · RemNote §2"}]}, {"num": "4", "date": "Wed Jul 29", "title": "S4 Roga margas & Shad Kriya Kala — Part 1 done · 88 pp", "pp": 18, "items": [{"t": "read", "x": "Disease pathways / Roga margas & doshagati (I, 59–66)"}, {"t": "read", "x": "Shad Kriya Kala (66–77)"}, {"t": "slides", "x": "Deck 67–85 · RemNote §3"}]}, {"num": "5", "date": "Thu Jul 30 ★", "title": "S5 Disease definition & classification (make-up)", "pp": 24, "items": [{"t": "read", "x": "Definition & classification of disease (I, 165–172)"}, {"t": "read", "x": "Variation in classical texts (173–190)"}, {"t": "slides", "x": "Deck 86–92 · RemNote §3"}]}, {"num": "6", "date": "Fri Jul 31", "title": "S6 Classification cont. & vyadhisankara", "pp": 22, "items": [{"t": "read", "x": "Variation in classical texts, cont. (I, 190–208)"}, {"t": "read", "x": "Nidanarthakara Vyadhi & Vyadhisankara (208–212)"}, {"t": "slides", "x": "Deck 93–96, 105–108 · RemNote §3"}]}, {"num": "7", "date": "Tue Aug 4", "title": "S7 Vyadhyavastha, paka & avarana — Part 2 done · 71 pp", "pp": 25, "items": [{"t": "read", "x": "Vyadhyavastha (I, 212–220)"}, {"t": "read", "x": "Sama & nirama dosha (220–223)"}, {"t": "read", "x": "Dosha & dhatu paka (223–226)"}, {"t": "read", "x": "Avarana (II, 711–722)"}, {"t": "slides", "x": "Deck 97–104, 109–124 · RemNote §3"}]}, {"num": "8", "date": "Wed Aug 5", "title": "S8 Pramana & the pariksha framework", "pp": 24, "items": [{"t": "lecture", "x": "Create Healing Protocol based on Nidana — Part 1"}, {"t": "read", "x": "Pramana (I, 313–320)"}, {"t": "read", "x": "Roga Rogi Pariksha (322)"}, {"t": "read", "x": "Prakriti (322–328)"}, {"t": "read", "x": "Sara (328–330)"}, {"t": "read", "x": "Trividha & Dasavidha Pariksha (335–343)"}, {"t": "slides", "x": "Deck 125–151 · RemNote §4"}]}, {"num": "9", "date": "Fri Aug 7", "title": "S9 Ashtasthana Pariksha & arishta", "pp": 31, "items": [{"t": "lecture", "x": "Create Healing Protocol based on Nidana — Part 2"}, {"t": "read", "x": "Ashtasthana Pariksha (I, 345–366)"}, {"t": "read", "x": "Arishta / prognosis (366–376)"}, {"t": "slides", "x": "Deck 152–163 · RemNote §4, 5"}]}, {"num": "10", "date": "Tue Aug 11", "title": "S10 Arishta & clinical investigations", "pp": 31, "items": [{"t": "lecture", "x": "Modern Clinical Investigations"}, {"t": "read", "x": "Arishta, cont. (I, 376–387)"}, {"t": "read", "x": "Clinical investigation methodologies (526–546)"}, {"t": "slides", "x": "Deck 164–166 · RemNote §5"}]}, {"num": "11", "date": "Wed Aug 12", "title": "S11 Clinical investigations cont. — Part 3 done · 107 pp", "pp": 21, "items": [{"t": "read", "x": "Clinical investigation methodologies, cont. (I, 546–567)"}, {"t": "slides", "x": "Deck 167–169 · RemNote §5"}]}, {"num": "12", "date": "Fri Aug 14", "title": "S12 ⭐ 302 TEST DAY", "pp": 0, "items": [{"t": "prep", "x": "Work the 302 study questions as test prep"}, {"t": "test", "x": "Sit the KAA 302 test"}]}], "303": [{"num": "13", "date": "Tue Aug 25", "title": "S13 Build Nidana Panchaka template + Jwara", "pp": 37, "items": [{"t": "lecture", "x": "Passing through the Channels — Srotases Revisited"}, {"t": "read", "x": "Build the Nidana Panchaka template, then Jwara (II, 1–38)"}, {"t": "slides", "x": "Deck 2–9 · RemNote §1"}]}, {"num": "14", "date": "Wed Aug 26", "title": "S14 Jwara cont. — Jwara done", "pp": 36, "items": [{"t": "read", "x": "Jwara, cont. (II, 38–74)"}, {"t": "slides", "x": "Deck 10–21 · RemNote §1"}]}, {"num": "15", "date": "Tue Sep 1", "title": "S15 Agnimandya vikara", "pp": 39, "items": [{"t": "read", "x": "Agnimandya vikara (II, 74–113)"}, {"t": "slides", "x": "Deck 22–41 · RemNote §2"}]}, {"num": "16", "date": "Wed Sep 2", "title": "S16 Agnimandya vikara cont.", "pp": 39, "items": [{"t": "read", "x": "Agnimandya vikara, cont. (II, 113–152)"}, {"t": "slides", "x": "Deck 42–59 · RemNote §3"}]}, {"num": "17", "date": "Thu Sep 3 ★", "title": "S17 Agnimandya vikara cont. (make-up)", "pp": 38, "items": [{"t": "read", "x": "Agnimandya vikara, cont. (II, 152–190)"}, {"t": "slides", "x": "Deck 60–73 · RemNote §3"}]}, {"num": "18", "date": "Fri Sep 4", "title": "S18 Agnimandya vikara — done · 154 pp", "pp": 38, "items": [{"t": "read", "x": "Agnimandya vikara, cont. (II, 190–228)"}, {"t": "slides", "x": "Deck 74–79 · RemNote §3"}]}, {"num": "19", "date": "Tue Sep 8", "title": "S19 Pandu", "pp": 33, "items": [{"t": "lecture", "x": "Strategies / Clinical Management — Part 1"}, {"t": "read", "x": "Pandu (II, 228–261)"}, {"t": "slides", "x": "Deck 80–90 · RemNote §4"}]}, {"num": "20", "date": "Wed Sep 9", "title": "S20 Pandu cont. — Pandu done", "pp": 32, "items": [{"t": "read", "x": "Pandu, cont. (II, 261–293)"}, {"t": "slides", "x": "Deck 91–97 · RemNote §5"}]}, {"num": "21", "date": "Thu Sep 10 ★", "title": "S21 Kasa — Kasa done", "pp": 37, "items": [{"t": "read", "x": "Kasa (II, 293–330)"}, {"t": "slides", "x": "Deck 98–110 · RemNote §6"}]}, {"num": "22", "date": "Fri Sep 11", "title": "S22 Rajayakshma", "pp": 40, "items": [{"t": "lecture", "x": "Imaging — Part One"}, {"t": "read", "x": "Rajayakshma (II, 330–370)"}, {"t": "slides", "x": "Deck 111–118 · RemNote §7"}]}, {"num": "23", "date": "Tue Sep 15", "title": "S23 Rajayakshma cont. & Mutraghata", "pp": 38, "items": [{"t": "read", "x": "Rajayakshma, cont. (II, 370–389)"}, {"t": "read", "x": "Mutraghata (389–408)"}, {"t": "slides", "x": "Deck 119–129 · RemNote §7, 8"}]}, {"num": "24", "date": "Wed Sep 16", "title": "S24 Mutraghata cont. & Prameha", "pp": 39, "items": [{"t": "lecture", "x": "Strategies / Clinical Management — Part 2"}, {"t": "read", "x": "Mutraghata, cont. (II, 408–425)"}, {"t": "read", "x": "Prameha (425–447)"}, {"t": "slides", "x": "Deck 130–137 · RemNote §8"}]}, {"num": "25", "date": "Fri Sep 18", "title": "S25 Prameha cont. & Kushta", "pp": 39, "items": [{"t": "lecture", "x": "Imaging — Part Two"}, {"t": "read", "x": "Prameha, cont. (II, 447–471)"}, {"t": "read", "x": "Kushta (471–486)"}, {"t": "slides", "x": "Deck 138–145 · RemNote §8, 9"}]}, {"num": "26", "date": "Tue Sep 22", "title": "S26 Kushta cont. — Kushta done", "pp": 36, "items": [{"t": "read", "x": "Kushta, cont. (II, 486–522)"}, {"t": "slides", "x": "Deck 146–154 · RemNote §9"}]}, {"num": "27", "date": "Wed Sep 23", "title": "S27 Amlapitta, Sopha & Krimi — 3 conditions", "pp": 34, "items": [{"t": "lecture", "x": "Passing through the Channels — Srotases Revisited 2"}, {"t": "read", "x": "Amlapitta (II, 530–536)"}, {"t": "read", "x": "Sopha (536–551)"}, {"t": "read", "x": "Krimi (551–564)"}, {"t": "slides", "x": "Deck 155–175 · RemNote §9, 10"}]}, {"num": "28", "date": "Thu Sep 24 ★", "title": "S28 Vata vyadhi (make-up)", "pp": 44, "items": [{"t": "lecture", "x": "Common Blood Investigations and their Interpretation"}, {"t": "read", "x": "Vata vyadhi (II, 624–668)"}, {"t": "slides", "x": "Deck 176–189 · RemNote §10"}]}, {"num": "29", "date": "Fri Sep 25", "title": "S29 Vata vyadhi cont.", "pp": 43, "items": [{"t": "read", "x": "Vata vyadhi, cont. (II, 668–711)"}, {"t": "slides", "x": "Deck 190–198 · RemNote §11"}]}, {"num": "30", "date": "Tue Sep 29", "title": "S30 Vata vyadhi — all 12 conditions done", "pp": 42, "items": [{"t": "read", "x": "Vata vyadhi, cont. (II, 711–753)"}, {"t": "slides", "x": "Deck 199–213 · RemNote §11"}]}, {"num": "31", "date": "Wed Sep 30", "title": "S31 303 test prep + debate prep", "pp": 0, "items": [{"t": "prep", "x": "Work the 303 study questions; debate prep: “Modern clinical methods are the extension of Ayurveda Pareeksha Vidhi”"}]}, {"num": "32", "date": "Fri Oct 2", "title": "S32 ⭐ 303 TEST DAY", "pp": 0, "items": [{"t": "prep", "x": "Review weak areas"}, {"t": "test", "x": "Sit the KAA 303 test"}]}]}, "formulations": [{"part": 1, "note": "Class PDF + recording", "classes": [{"date": "Sat Aug 1, 2026", "title": "Ama", "pdf": true}, {"date": "Sat Aug 15, 2026", "title": "Constipation", "pdf": true}, {"date": "Sat Sep 5, 2026", "title": "Preventative Health", "pdf": true}, {"date": "Sat Sep 19, 2026", "title": "Mind", "pdf": true}, {"date": "Sat Oct 3, 2026", "title": "Gut Health", "pdf": true}, {"date": "Thu Oct 15, 2026", "title": "Joint Health", "pdf": true}, {"date": "Thu Oct 29, 2026", "title": "Skin Health", "pdf": true}, {"date": "Thu Nov 5, 2026", "title": "Liver Health", "pdf": true}, {"date": "Thu Nov 19, 2026", "title": "Nourishment", "pdf": true}, {"date": "Thu Dec 3, 2026", "title": "Lower Back Issues", "pdf": true}, {"date": "Thu Dec 17, 2026", "title": "Menstrual Health", "pdf": true}, {"date": "Thu Dec 31, 2026", "title": "Respiratory System", "pdf": true}]}, {"part": 2, "note": "Class PDF + recording", "classes": [{"date": "Thu Jan 7, 2027", "title": "Neurological Health", "pdf": true}, {"date": "Thu Jan 21, 2027", "title": "Vatarakta", "pdf": true}, {"date": "Thu Feb 4, 2027", "title": "Bone Health", "pdf": true}, {"date": "Thu Feb 18, 2027", "title": "Kidney/Urinary Health", "pdf": true}, {"date": "Thu Mar 4, 2027", "title": "Diseases of the Head", "pdf": true}, {"date": "Thu Mar 18, 2027", "title": "Skin Health", "pdf": true}, {"date": "Thu Apr 1, 2027", "title": "Gut Health", "pdf": true}, {"date": "Thu Apr 15, 2027", "title": "Allergies", "pdf": true}, {"date": "Thu Apr 29, 2027", "title": "Musculoskeletal Health", "pdf": true}, {"date": "Thu May 6, 2027", "title": "Mental Health", "pdf": true}, {"date": "Thu May 20, 2027", "title": "Women’s Health", "pdf": true}, {"date": "Thu Jun 3, 2027", "title": "Weight Management", "pdf": true}]}, {"part": 3, "note": "Class PDF + recording", "classes": [{"date": "Thu Jun 17, 2027", "title": "Neurological Health", "pdf": true}, {"date": "Thu Jul 1, 2027", "title": "Hypertension", "pdf": true}, {"date": "Thu Jul 15, 2027", "title": "Respiratory Health", "pdf": true}, {"date": "Thu Jul 29, 2027", "title": "Liver Health", "pdf": true}, {"date": "Thu Aug 5, 2027", "title": "Colon Health", "pdf": true}, {"date": "Thu Aug 19, 2027", "title": "Skin Health", "pdf": true}, {"date": "Thu Sep 2, 2027", "title": "Non-Healing Ulcers", "pdf": true}, {"date": "Thu Sep 16, 2027", "title": "Eye Health", "pdf": true}, {"date": "Thu Sep 30, 2027", "title": "Rasayana", "pdf": true}, {"date": "Thu Oct 7, 2027", "title": "Hemorrhoids", "pdf": true}, {"date": "Thu Oct 21, 2027", "title": "Diabetes", "pdf": true}, {"date": "Thu Nov 4, 2027", "title": "Thyroid Health", "pdf": true}]}, {"part": 4, "note": "Class PDF + recording", "classes": [{"date": "Thu Nov 18, 2027", "title": "Digestion", "pdf": true}, {"date": "Thu Dec 2, 2027", "title": "Fever and Inflammation", "pdf": true}, {"date": "Thu Dec 16, 2027", "title": "Arthritis", "pdf": true}, {"date": "Thu Dec 30, 2027", "title": "Anemia", "pdf": true}, {"date": "Thu Jan 6, 2028", "title": "Heart Health", "pdf": true}, {"date": "Thu Jan 20, 2028", "title": "Swelling", "pdf": true}, {"date": "Thu Feb 3, 2028", "title": "ENT & Eye Health", "pdf": true}, {"date": "Thu Feb 17, 2028", "title": "Women’s Health", "pdf": true}, {"date": "Thu Mar 2, 2028", "title": "Metabolic Health", "pdf": true}, {"date": "Thu Mar 16, 2028", "title": "Colon Health", "pdf": true}, {"date": "Thu Mar 30, 2028", "title": "Lung Health", "pdf": true}, {"date": "Thu Apr 6, 2028", "title": "Skin Health", "pdf": true}]}, {"part": 5, "note": "Class PDF + recording", "classes": [{"date": "Thu Apr 20, 2028", "title": "Diarrhea", "pdf": true}, {"date": "Thu May 4, 2028", "title": "Skin Health", "pdf": true}, {"date": "Thu May 18, 2028", "title": "Fistula", "pdf": true}, {"date": "Thu Jun 1, 2028", "title": "Lung Health", "pdf": true}, {"date": "Thu Jun 15, 2028", "title": "Rejuvenation", "pdf": true}, {"date": "Thu Jun 29, 2028", "title": "Gut Health", "pdf": true}, {"date": "Thu Jul 6, 2028", "title": "Joint Health", "pdf": true}, {"date": "Thu Jul 20, 2028", "title": "Urinary Issues", "pdf": true}, {"date": "Thu Aug 3, 2028", "title": "Indigestion", "pdf": true}, {"date": "Thu Aug 17, 2028", "title": "Piles", "pdf": true}, {"date": "Thu Aug 31, 2028", "title": "Ascites", "pdf": true}, {"date": "Thu Sep 7, 2028", "title": "Neuromuscular Conditions", "pdf": true}]}, {"part": 6, "note": "Class PDF + recording", "classes": [{"date": "Thu Sep 21, 2028", "title": "Abdominal Spasms & Tumors", "pdf": true}, {"date": "Thu Oct 5, 2028", "title": "Gut Health", "pdf": true}, {"date": "Thu Oct 19, 2028", "title": "Skin Health", "pdf": true}, {"date": "Thu Nov 2, 2028", "title": "Heart Health", "pdf": true}, {"date": "Thu Nov 16, 2028", "title": "Musculoskeletal Health", "pdf": true}, {"date": "Thu Nov 30, 2028", "title": "Respiratory Health", "pdf": true}, {"date": "Thu Dec 7, 2028", "title": "Diabetic Management", "pdf": true}, {"date": "Thu Dec 21, 2028", "title": "Women’s Health", "pdf": true}, {"date": "Thu Jan 4, 2029", "title": "Digestive Health", "pdf": true}, {"date": "Thu Jan 18, 2029", "title": "Fever and Inflammation", "pdf": true}, {"date": "Thu Feb 1, 2029", "title": "Neurological Health", "pdf": true}]}], "sanskrit": [{"date": "Sat Aug 8, 2026", "n": 1}, {"date": "Sat Sep 12, 2026", "n": 2}, {"date": "Sat Oct 10, 2026", "n": 3}, {"date": "Sat Nov 14, 2026", "n": 4}, {"date": "Sat Dec 12, 2026", "n": 5}, {"date": "Sat Jan 9, 2027", "n": 6}, {"date": "Sat Feb 13, 2027", "n": 7}, {"date": "Sat Mar 13, 2027", "n": 8}, {"date": "Sat Apr 10, 2027", "n": 9}, {"date": "Sat May 8, 2027", "n": 10}, {"date": "Sat Jun 12, 2027", "n": 11}, {"date": "Sat Jul 10, 2027", "n": 12}, {"date": "Sat Aug 14, 2027", "n": 13}, {"date": "Sat Sep 11, 2027", "n": 14}, {"date": "Sat Oct 9, 2027", "n": 15}], "ah": [{"m": "Aug 2026", "weeks": [{"wk": "Week of Aug 3", "items": [{"typ": "REC", "label": "Mon, Aug 3 · Part 7 · 1/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 5 · Part 7 · 2/15", "live": false}, {"typ": "REC", "label": "Fri, Aug 7 · Part 7 · 3/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Aug 10", "items": [{"typ": "REC", "label": "Mon, Aug 10 · Part 7 · 4/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 12 · Part 7 · 5/15", "live": false}]}, {"wk": "Week of Aug 17", "items": [{"typ": "REC", "label": "Mon, Aug 17 · Part 7 · 6/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 19 · Part 7 · 7/15", "live": false}]}, {"wk": "Week of Aug 24", "items": [{"typ": "REC", "label": "Mon, Aug 24 · Part 7 · 8/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 26 · Part 7 · 9/15", "live": false}, {"typ": "REC", "label": "Fri, Aug 28 · Part 7 · 10/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Aug 31", "items": [{"typ": "REC", "label": "Mon, Aug 31 · Part 7 · 11/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 2 · Part 23 · S1/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Sep 2026", "weeks": [{"wk": "Week of Sep 7", "items": [{"typ": "REC", "label": "Mon, Sep 7 · Part 7 · 12/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 9 · Part 23 · S2/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Sep 14", "items": [{"typ": "REC", "label": "Mon, Sep 14 · Part 7 · 13/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 16 · Part 23 · S3/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Sep 21", "items": [{"typ": "REC", "label": "Mon, Sep 21 · Part 7 · 14/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 23 · Part 23 · S4/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Sep 28", "items": [{"typ": "REC", "label": "Mon, Sep 28 · Part 7 · 15/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 30 · Part 23 · S5/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Oct 2026", "weeks": [{"wk": "Week of Oct 5", "items": [{"typ": "REC", "label": "Mon, Oct 5 · Part 8 · 1/16", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 7 · Part 23 · S6/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Oct 12", "items": [{"typ": "REC", "label": "Mon, Oct 12 · Part 8 · 2/16", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 14 · Part 23 · S7/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Oct 19", "items": [{"typ": "REC", "label": "Mon, Oct 19 · Part 8 · 3/16", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 21 · Part 23 · S8/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Oct 26", "items": [{"typ": "REC", "label": "Mon, Oct 26 · Part 8 · 4/16", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 28 · Part 23 · S9/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Nov 2026", "weeks": [{"wk": "Week of Nov 2", "items": [{"typ": "REC", "label": "Mon, Nov 2 · Part 8 · 5/16", "live": false}, {"typ": "LIVE", "label": "Wed, Nov 4 · Part 23 · S10/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Nov 9", "items": [{"typ": "REC", "label": "Mon, Nov 9 · Part 8 · 6/16", "live": false}, {"typ": "LIVE", "label": "Wed, Nov 11 · Part 23 · S11/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Nov 16", "items": [{"typ": "REC", "label": "Mon, Nov 16 · Part 8 · 7/16", "live": false}, {"typ": "LIVE", "label": "Wed, Nov 18 · Part 23 · S12/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Nov 23", "items": [{"typ": "REC", "label": "Mon, Nov 23 · Part 8 · 8/16", "live": false}, {"typ": "REC", "label": "Wed, Nov 25 · Part 8 · 9/16", "live": false}]}, {"wk": "Week of Nov 30", "items": [{"typ": "REC", "label": "Mon, Nov 30 · Part 8 · 10/16", "live": false}, {"typ": "LIVE", "label": "Wed, Dec 2 · Part 23 · S13/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Dec 2026", "weeks": [{"wk": "Week of Dec 7", "items": [{"typ": "REC", "label": "Mon, Dec 7 · Part 8 · 11/16", "live": false}, {"typ": "LIVE", "label": "Wed, Dec 9 · Part 23 · S14/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Dec 14", "items": [{"typ": "REC", "label": "Mon, Dec 14 · Part 8 · 12/16", "live": false}, {"typ": "LIVE", "label": "Wed, Dec 16 · Part 23 · S15/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Dec 21", "items": [{"typ": "REC", "label": "Mon, Dec 21 · Part 8 · 13/16", "live": false}, {"typ": "REC", "label": "Wed, Dec 23 · Part 8 · 14/16", "live": false}]}, {"wk": "Week of Dec 28", "items": [{"typ": "REC", "label": "Mon, Dec 28 · Part 8 · 15/16", "live": false}, {"typ": "REC", "label": "Wed, Dec 30 · Part 8 · 16/16", "live": false}]}]}, {"m": "Jan 2027", "weeks": [{"wk": "Week of Jan 4", "items": [{"typ": "REC", "label": "Mon, Jan 4 · Part 9 · 1/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 6 · Part 9 · 2/15", "live": false}, {"typ": "REC", "label": "Fri, Jan 8 · Part 9 · 3/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Jan 11", "items": [{"typ": "REC", "label": "Mon, Jan 11 · Part 9 · 4/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 13 · Part 9 · 5/15", "live": false}]}, {"wk": "Week of Jan 18", "items": [{"typ": "REC", "label": "Mon, Jan 18 · Part 9 · 6/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 20 · Part 9 · 7/15", "live": false}]}, {"wk": "Week of Jan 25", "items": [{"typ": "REC", "label": "Mon, Jan 25 · Part 9 · 8/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 27 · Part 9 · 9/15", "live": false}, {"typ": "REC", "label": "Fri, Jan 29 · Part 9 · 10/15 · ★ catch-up", "live": false}]}]}, {"m": "Feb 2027", "weeks": [{"wk": "Week of Feb 1", "items": [{"typ": "REC", "label": "Mon, Feb 1 · Part 9 · 11/15", "live": false}, {"typ": "REC", "label": "Wed, Feb 3 · Part 9 · 12/15", "live": false}]}, {"wk": "Week of Feb 8", "items": [{"typ": "REC", "label": "Mon, Feb 8 · Part 9 · 13/15", "live": false}, {"typ": "LIVE", "label": "Wed, Feb 10 · Part 24 · S1/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Feb 15", "items": [{"typ": "REC", "label": "Mon, Feb 15 · Part 9 · 14/15", "live": false}, {"typ": "LIVE", "label": "Wed, Feb 17 · Part 24 · S2/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Feb 22", "items": [{"typ": "REC", "label": "Mon, Feb 22 · Part 9 · 15/15", "live": false}, {"typ": "LIVE", "label": "Wed, Feb 24 · Part 24 · S3/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Mar 2027", "weeks": [{"wk": "Week of Mar 1", "items": [{"typ": "REC", "label": "Mon, Mar 1 · Part 10 · 1/15", "live": false}, {"typ": "LIVE", "label": "Wed, Mar 3 · Part 24 · S4/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Mar 8", "items": [{"typ": "REC", "label": "Mon, Mar 8 · Part 10 · 2/15", "live": false}, {"typ": "LIVE", "label": "Wed, Mar 10 · Part 24 · S5/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Mar 15", "items": [{"typ": "REC", "label": "Mon, Mar 15 · Part 10 · 3/15", "live": false}, {"typ": "LIVE", "label": "Wed, Mar 17 · Part 24 · S6/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Mar 22", "items": [{"typ": "REC", "label": "Mon, Mar 22 · Part 10 · 4/15", "live": false}, {"typ": "LIVE", "label": "Wed, Mar 24 · Part 24 · S7/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Mar 29", "items": [{"typ": "REC", "label": "Mon, Mar 29 · Part 10 · 5/15", "live": false}, {"typ": "LIVE", "label": "Wed, Mar 31 · Part 24 · S8/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Apr 2027", "weeks": [{"wk": "Week of Apr 5", "items": [{"typ": "REC", "label": "Mon, Apr 5 · Part 10 · 6/15", "live": false}, {"typ": "LIVE", "label": "Wed, Apr 7 · Part 24 · S9/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Apr 12", "items": [{"typ": "REC", "label": "Mon, Apr 12 · Part 10 · 7/15", "live": false}, {"typ": "LIVE", "label": "Wed, Apr 14 · Part 24 · S10/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Apr 19", "items": [{"typ": "REC", "label": "Mon, Apr 19 · Part 10 · 8/15", "live": false}, {"typ": "LIVE", "label": "Wed, Apr 21 · Part 24 · S11/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Apr 26", "items": [{"typ": "REC", "label": "Mon, Apr 26 · Part 10 · 9/15", "live": false}, {"typ": "LIVE", "label": "Wed, Apr 28 · Part 24 · S12/15 · 6:00 pm PT", "live": true}]}]}, {"m": "May 2027", "weeks": [{"wk": "Week of May 3", "items": [{"typ": "REC", "label": "Mon, May 3 · Part 10 · 10/15", "live": false}, {"typ": "LIVE", "label": "Wed, May 5 · Part 24 · S13/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of May 10", "items": [{"typ": "REC", "label": "Mon, May 10 · Part 10 · 11/15", "live": false}, {"typ": "LIVE", "label": "Wed, May 12 · Part 24 · S14/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of May 17", "items": [{"typ": "REC", "label": "Mon, May 17 · Part 10 · 12/15", "live": false}, {"typ": "LIVE", "label": "Wed, May 19 · Part 24 · S15/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of May 24", "items": [{"typ": "REC", "label": "Mon, May 24 · Part 10 · 13/15", "live": false}, {"typ": "REC", "label": "Wed, May 26 · Part 10 · 14/15", "live": false}]}, {"wk": "Week of May 31", "items": [{"typ": "REC", "label": "Mon, May 31 · Part 10 · 15/15", "live": false}, {"typ": "REC", "label": "Wed, Jun 2 · Part 11 · 1/15", "live": false}]}]}, {"m": "Jun 2027", "weeks": [{"wk": "Week of Jun 7", "items": [{"typ": "REC", "label": "Mon, Jun 7 · Part 11 · 2/15", "live": false}, {"typ": "REC", "label": "Wed, Jun 9 · Part 11 · 3/15", "live": false}, {"typ": "REC", "label": "Fri, Jun 11 · Part 11 · 4/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Jun 14", "items": [{"typ": "REC", "label": "Mon, Jun 14 · Part 11 · 5/15", "live": false}, {"typ": "REC", "label": "Wed, Jun 16 · Part 11 · 6/15", "live": false}]}, {"wk": "Week of Jun 21", "items": [{"typ": "REC", "label": "Mon, Jun 21 · Part 11 · 7/15", "live": false}, {"typ": "REC", "label": "Wed, Jun 23 · Part 11 · 8/15", "live": false}]}, {"wk": "Week of Jun 28", "items": [{"typ": "REC", "label": "Mon, Jun 28 · Part 11 · 9/15", "live": false}, {"typ": "REC", "label": "Wed, Jun 30 · Part 11 · 10/15", "live": false}]}]}, {"m": "Jul 2027", "weeks": [{"wk": "Week of Jul 5", "items": [{"typ": "REC", "label": "Mon, Jul 5 · Part 11 · 11/15", "live": false}, {"typ": "REC", "label": "Wed, Jul 7 · Part 11 · 12/15", "live": false}, {"typ": "REC", "label": "Fri, Jul 9 · Part 11 · 13/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Jul 12", "items": [{"typ": "REC", "label": "Mon, Jul 12 · Part 11 · 14/15", "live": false}, {"typ": "REC", "label": "Wed, Jul 14 · Part 11 · 15/15", "live": false}]}, {"wk": "Week of Jul 19", "items": [{"typ": "REC", "label": "Mon, Jul 19 · Part 12 · 1/15", "live": false}, {"typ": "REC", "label": "Wed, Jul 21 · Part 12 · 2/15", "live": false}]}, {"wk": "Week of Jul 26", "items": [{"typ": "REC", "label": "Mon, Jul 26 · Part 12 · 3/15", "live": false}, {"typ": "REC", "label": "Wed, Jul 28 · Part 12 · 4/15", "live": false}, {"typ": "REC", "label": "Fri, Jul 30 · Part 12 · 5/15 · ★ catch-up", "live": false}]}]}, {"m": "Aug 2027", "weeks": [{"wk": "Week of Aug 2", "items": [{"typ": "REC", "label": "Mon, Aug 2 · Part 12 · 6/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 4 · Part 12 · 7/15", "live": false}]}, {"wk": "Week of Aug 9", "items": [{"typ": "REC", "label": "Mon, Aug 9 · Part 12 · 8/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 11 · Part 12 · 9/15", "live": false}]}, {"wk": "Week of Aug 16", "items": [{"typ": "REC", "label": "Mon, Aug 16 · Part 12 · 10/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 18 · Part 12 · 11/15", "live": false}]}, {"wk": "Week of Aug 23", "items": [{"typ": "REC", "label": "Mon, Aug 23 · Part 12 · 12/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 25 · Part 12 · 13/15", "live": false}, {"typ": "REC", "label": "Fri, Aug 27 · Part 12 · 14/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Aug 30", "items": [{"typ": "REC", "label": "Mon, Aug 30 · Part 12 · 15/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 1 · Part 25 · S1/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Sep 2027", "weeks": [{"wk": "Week of Sep 6", "items": [{"typ": "REC", "label": "Mon, Sep 6 · Part 13 · 1/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 8 · Part 25 · S2/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Sep 13", "items": [{"typ": "REC", "label": "Mon, Sep 13 · Part 13 · 2/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 15 · Part 25 · S3/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Sep 20", "items": [{"typ": "REC", "label": "Mon, Sep 20 · Part 13 · 3/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 22 · Part 25 · S4/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Sep 27", "items": [{"typ": "REC", "label": "Mon, Sep 27 · Part 13 · 4/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 29 · Part 25 · S5/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Oct 2027", "weeks": [{"wk": "Week of Oct 4", "items": [{"typ": "REC", "label": "Mon, Oct 4 · Part 13 · 5/15", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 6 · Part 25 · S6/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Oct 11", "items": [{"typ": "REC", "label": "Mon, Oct 11 · Part 13 · 6/15", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 13 · Part 25 · S7/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Oct 18", "items": [{"typ": "REC", "label": "Mon, Oct 18 · Part 13 · 7/15", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 20 · Part 25 · S8/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Oct 25", "items": [{"typ": "REC", "label": "Mon, Oct 25 · Part 13 · 8/15", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 27 · Part 25 · S9/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Nov 2027", "weeks": [{"wk": "Week of Nov 1", "items": [{"typ": "REC", "label": "Mon, Nov 1 · Part 13 · 9/15", "live": false}, {"typ": "LIVE", "label": "Wed, Nov 3 · Part 25 · S10/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Nov 8", "items": [{"typ": "REC", "label": "Mon, Nov 8 · Part 13 · 10/15", "live": false}, {"typ": "LIVE", "label": "Wed, Nov 10 · Part 25 · S11/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Nov 15", "items": [{"typ": "REC", "label": "Mon, Nov 15 · Part 13 · 11/15", "live": false}, {"typ": "LIVE", "label": "Wed, Nov 17 · Part 25 · S12/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Nov 22", "items": [{"typ": "REC", "label": "Mon, Nov 22 · Part 13 · 12/15", "live": false}, {"typ": "REC", "label": "Wed, Nov 24 · Part 13 · 13/15", "live": false}]}, {"wk": "Week of Nov 29", "items": [{"typ": "REC", "label": "Mon, Nov 29 · Part 13 · 14/15", "live": false}, {"typ": "LIVE", "label": "Wed, Dec 1 · Part 25 · S13/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Dec 2027", "weeks": [{"wk": "Week of Dec 6", "items": [{"typ": "REC", "label": "Mon, Dec 6 · Part 13 · 15/15", "live": false}, {"typ": "LIVE", "label": "Wed, Dec 8 · Part 25 · S14/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Dec 13", "items": [{"typ": "REC", "label": "Mon, Dec 13 · Part 14 · 1/15", "live": false}, {"typ": "LIVE", "label": "Wed, Dec 15 · Part 25 · S15/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Dec 20", "items": [{"typ": "REC", "label": "Mon, Dec 20 · Part 14 · 2/15", "live": false}, {"typ": "REC", "label": "Wed, Dec 22 · Part 14 · 3/15", "live": false}]}, {"wk": "Week of Dec 27", "items": [{"typ": "REC", "label": "Mon, Dec 27 · Part 14 · 4/15", "live": false}, {"typ": "REC", "label": "Wed, Dec 29 · Part 14 · 5/15", "live": false}]}]}, {"m": "Jan 2028", "weeks": [{"wk": "Week of Jan 3", "items": [{"typ": "REC", "label": "Mon, Jan 3 · Part 14 · 6/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 5 · Part 14 · 7/15", "live": false}, {"typ": "REC", "label": "Fri, Jan 7 · Part 14 · 8/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Jan 10", "items": [{"typ": "REC", "label": "Mon, Jan 10 · Part 14 · 9/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 12 · Part 14 · 10/15", "live": false}]}, {"wk": "Week of Jan 17", "items": [{"typ": "REC", "label": "Mon, Jan 17 · Part 14 · 11/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 19 · Part 14 · 12/15", "live": false}]}, {"wk": "Week of Jan 24", "items": [{"typ": "REC", "label": "Mon, Jan 24 · Part 14 · 13/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 26 · Part 14 · 14/15", "live": false}, {"typ": "REC", "label": "Fri, Jan 28 · Part 14 · 15/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Jan 31", "items": [{"typ": "REC", "label": "Mon, Jan 31 · Part 15 · 1/15", "live": false}, {"typ": "REC", "label": "Wed, Feb 2 · Part 15 · 2/15", "live": false}]}]}, {"m": "Feb 2028", "weeks": [{"wk": "Week of Feb 7", "items": [{"typ": "REC", "label": "Mon, Feb 7 · Part 15 · 3/15", "live": false}, {"typ": "REC", "label": "Wed, Feb 9 · Part 15 · 4/15", "live": false}]}, {"wk": "Week of Feb 14", "items": [{"typ": "REC", "label": "Mon, Feb 14 · Part 15 · 5/15", "live": false}, {"typ": "LIVE", "label": "Wed, Feb 16 · Part 26 · S1/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Feb 21", "items": [{"typ": "REC", "label": "Mon, Feb 21 · Part 15 · 6/15", "live": false}, {"typ": "LIVE", "label": "Wed, Feb 23 · Part 26 · S2/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Feb 28", "items": [{"typ": "REC", "label": "Mon, Feb 28 · Part 15 · 7/15", "live": false}, {"typ": "LIVE", "label": "Wed, Mar 1 · Part 26 · S3/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Mar 2028", "weeks": [{"wk": "Week of Mar 6", "items": [{"typ": "REC", "label": "Mon, Mar 6 · Part 15 · 8/15", "live": false}, {"typ": "LIVE", "label": "Wed, Mar 8 · Part 26 · S4/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Mar 13", "items": [{"typ": "REC", "label": "Mon, Mar 13 · Part 15 · 9/15", "live": false}, {"typ": "LIVE", "label": "Wed, Mar 15 · Part 26 · S5/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Mar 20", "items": [{"typ": "REC", "label": "Mon, Mar 20 · Part 15 · 10/15", "live": false}, {"typ": "LIVE", "label": "Wed, Mar 22 · Part 26 · S6/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Mar 27", "items": [{"typ": "REC", "label": "Mon, Mar 27 · Part 15 · 11/15", "live": false}, {"typ": "LIVE", "label": "Wed, Mar 29 · Part 26 · S7/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Apr 2028", "weeks": [{"wk": "Week of Apr 3", "items": [{"typ": "REC", "label": "Mon, Apr 3 · Part 15 · 12/15", "live": false}, {"typ": "LIVE", "label": "Wed, Apr 5 · Part 26 · S8/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Apr 10", "items": [{"typ": "REC", "label": "Mon, Apr 10 · Part 15 · 13/15", "live": false}, {"typ": "LIVE", "label": "Wed, Apr 12 · Part 26 · S9/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Apr 17", "items": [{"typ": "REC", "label": "Mon, Apr 17 · Part 15 · 14/15", "live": false}, {"typ": "LIVE", "label": "Wed, Apr 19 · Part 26 · S10/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Apr 24", "items": [{"typ": "REC", "label": "Mon, Apr 24 · Part 15 · 15/15", "live": false}, {"typ": "LIVE", "label": "Wed, Apr 26 · Part 26 · S11/15 · 6:00 pm PT", "live": true}]}]}, {"m": "May 2028", "weeks": [{"wk": "Week of May 1", "items": [{"typ": "REC", "label": "Mon, May 1 · Part 16 · 1/15", "live": false}, {"typ": "LIVE", "label": "Wed, May 3 · Part 26 · S12/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of May 8", "items": [{"typ": "REC", "label": "Mon, May 8 · Part 16 · 2/15", "live": false}, {"typ": "LIVE", "label": "Wed, May 10 · Part 26 · S13/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of May 15", "items": [{"typ": "REC", "label": "Mon, May 15 · Part 16 · 3/15", "live": false}, {"typ": "LIVE", "label": "Wed, May 17 · Part 26 · S14/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of May 22", "items": [{"typ": "REC", "label": "Mon, May 22 · Part 16 · 4/15", "live": false}, {"typ": "LIVE", "label": "Wed, May 24 · Part 26 · S15/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of May 29", "items": [{"typ": "REC", "label": "Mon, May 29 · Part 16 · 5/15", "live": false}, {"typ": "REC", "label": "Wed, May 31 · Part 16 · 6/15", "live": false}]}]}, {"m": "Jun 2028", "weeks": [{"wk": "Week of Jun 5", "items": [{"typ": "REC", "label": "Mon, Jun 5 · Part 16 · 7/15", "live": false}, {"typ": "REC", "label": "Wed, Jun 7 · Part 16 · 8/15", "live": false}, {"typ": "REC", "label": "Fri, Jun 9 · Part 16 · 9/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Jun 12", "items": [{"typ": "REC", "label": "Mon, Jun 12 · Part 16 · 10/15", "live": false}, {"typ": "REC", "label": "Wed, Jun 14 · Part 16 · 11/15", "live": false}]}, {"wk": "Week of Jun 19", "items": [{"typ": "REC", "label": "Mon, Jun 19 · Part 16 · 12/15", "live": false}, {"typ": "REC", "label": "Wed, Jun 21 · Part 16 · 13/15", "live": false}]}, {"wk": "Week of Jun 26", "items": [{"typ": "REC", "label": "Mon, Jun 26 · Part 16 · 14/15", "live": false}, {"typ": "REC", "label": "Wed, Jun 28 · Part 16 · 15/15", "live": false}]}]}, {"m": "Jul 2028", "weeks": [{"wk": "Week of Jul 3", "items": [{"typ": "REC", "label": "Mon, Jul 3 · Part 17 · 1/15", "live": false}, {"typ": "REC", "label": "Wed, Jul 5 · Part 17 · 2/15", "live": false}, {"typ": "REC", "label": "Fri, Jul 7 · Part 17 · 3/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Jul 10", "items": [{"typ": "REC", "label": "Mon, Jul 10 · Part 17 · 4/15", "live": false}, {"typ": "REC", "label": "Wed, Jul 12 · Part 17 · 5/15", "live": false}]}, {"wk": "Week of Jul 17", "items": [{"typ": "REC", "label": "Mon, Jul 17 · Part 17 · 6/15", "live": false}, {"typ": "REC", "label": "Wed, Jul 19 · Part 17 · 7/15", "live": false}]}, {"wk": "Week of Jul 24", "items": [{"typ": "REC", "label": "Mon, Jul 24 · Part 17 · 8/15", "live": false}, {"typ": "REC", "label": "Wed, Jul 26 · Part 17 · 9/15", "live": false}, {"typ": "REC", "label": "Fri, Jul 28 · Part 17 · 10/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Jul 31", "items": [{"typ": "REC", "label": "Mon, Jul 31 · Part 17 · 11/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 2 · Part 17 · 12/15", "live": false}]}]}, {"m": "Aug 2028", "weeks": [{"wk": "Week of Aug 7", "items": [{"typ": "REC", "label": "Mon, Aug 7 · Part 17 · 13/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 9 · Part 17 · 14/15", "live": false}]}, {"wk": "Week of Aug 14", "items": [{"typ": "REC", "label": "Mon, Aug 14 · Part 17 · 15/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 16 · Part 18 · 1/15", "live": false}]}, {"wk": "Week of Aug 21", "items": [{"typ": "REC", "label": "Mon, Aug 21 · Part 18 · 2/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 23 · Part 18 · 3/15", "live": false}, {"typ": "REC", "label": "Fri, Aug 25 · Part 18 · 4/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Aug 28", "items": [{"typ": "REC", "label": "Mon, Aug 28 · Part 18 · 5/15", "live": false}, {"typ": "REC", "label": "Wed, Aug 30 · Part 18 · 6/15", "live": false}]}]}, {"m": "Sep 2028", "weeks": [{"wk": "Week of Sep 4", "items": [{"typ": "REC", "label": "Mon, Sep 4 · Part 18 · 7/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 6 · Part 27 · S1/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Sep 11", "items": [{"typ": "REC", "label": "Mon, Sep 11 · Part 18 · 8/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 13 · Part 27 · S2/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Sep 18", "items": [{"typ": "REC", "label": "Mon, Sep 18 · Part 18 · 9/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 20 · Part 27 · S3/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Sep 25", "items": [{"typ": "REC", "label": "Mon, Sep 25 · Part 18 · 10/15", "live": false}, {"typ": "LIVE", "label": "Wed, Sep 27 · Part 27 · S4/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Oct 2028", "weeks": [{"wk": "Week of Oct 2", "items": [{"typ": "REC", "label": "Mon, Oct 2 · Part 18 · 11/15", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 4 · Part 27 · S5/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Oct 9", "items": [{"typ": "REC", "label": "Mon, Oct 9 · Part 18 · 12/15", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 11 · Part 27 · S6/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Oct 16", "items": [{"typ": "REC", "label": "Mon, Oct 16 · Part 18 · 13/15", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 18 · Part 27 · S7/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Oct 23", "items": [{"typ": "REC", "label": "Mon, Oct 23 · Part 18 · 14/15", "live": false}, {"typ": "LIVE", "label": "Wed, Oct 25 · Part 27 · S8/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Oct 30", "items": [{"typ": "REC", "label": "Mon, Oct 30 · Part 18 · 15/15", "live": false}, {"typ": "LIVE", "label": "Wed, Nov 1 · Part 27 · S9/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Nov 2028", "weeks": [{"wk": "Week of Nov 6", "items": [{"typ": "REC", "label": "Mon, Nov 6 · Part 19 · 1/15", "live": false}, {"typ": "LIVE", "label": "Wed, Nov 8 · Part 27 · S10/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Nov 13", "items": [{"typ": "REC", "label": "Mon, Nov 13 · Part 19 · 2/15", "live": false}, {"typ": "LIVE", "label": "Wed, Nov 15 · Part 27 · S11/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Nov 20", "items": [{"typ": "REC", "label": "Mon, Nov 20 · Part 19 · 3/15", "live": false}, {"typ": "REC", "label": "Wed, Nov 22 · Part 19 · 4/15", "live": false}]}, {"wk": "Week of Nov 27", "items": [{"typ": "REC", "label": "Mon, Nov 27 · Part 19 · 5/15", "live": false}, {"typ": "LIVE", "label": "Wed, Nov 29 · Part 27 · S12/15 · 6:00 pm PT", "live": true}]}]}, {"m": "Dec 2028", "weeks": [{"wk": "Week of Dec 4", "items": [{"typ": "REC", "label": "Mon, Dec 4 · Part 19 · 6/15", "live": false}, {"typ": "LIVE", "label": "Wed, Dec 6 · Part 27 · S13/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Dec 11", "items": [{"typ": "REC", "label": "Mon, Dec 11 · Part 19 · 7/15", "live": false}, {"typ": "LIVE", "label": "Wed, Dec 13 · Part 27 · S14/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Dec 18", "items": [{"typ": "REC", "label": "Mon, Dec 18 · Part 19 · 8/15", "live": false}, {"typ": "LIVE", "label": "Wed, Dec 20 · Part 27 · S15/15 · 6:00 pm PT", "live": true}]}, {"wk": "Week of Dec 25", "items": [{"typ": "REC", "label": "Mon, Dec 25 · Part 19 · 9/15", "live": false}, {"typ": "REC", "label": "Wed, Dec 27 · Part 19 · 10/15", "live": false}]}]}, {"m": "Jan 2029", "weeks": [{"wk": "Week of Jan 1", "items": [{"typ": "REC", "label": "Mon, Jan 1 · Part 19 · 11/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 3 · Part 19 · 12/15", "live": false}, {"typ": "REC", "label": "Fri, Jan 5 · Part 19 · 13/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Jan 8", "items": [{"typ": "REC", "label": "Mon, Jan 8 · Part 19 · 14/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 10 · Part 19 · 15/15", "live": false}]}, {"wk": "Week of Jan 15", "items": [{"typ": "REC", "label": "Mon, Jan 15 · Part 20 · 1/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 17 · Part 20 · 2/15", "live": false}]}, {"wk": "Week of Jan 22", "items": [{"typ": "REC", "label": "Mon, Jan 22 · Part 20 · 3/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 24 · Part 20 · 4/15", "live": false}, {"typ": "REC", "label": "Fri, Jan 26 · Part 20 · 5/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Jan 29", "items": [{"typ": "REC", "label": "Mon, Jan 29 · Part 20 · 6/15", "live": false}, {"typ": "REC", "label": "Wed, Jan 31 · Part 20 · 7/15", "live": false}]}]}, {"m": "Feb 2029", "weeks": [{"wk": "Week of Feb 5", "items": [{"typ": "REC", "label": "Mon, Feb 5 · Part 20 · 8/15", "live": false}, {"typ": "REC", "label": "Wed, Feb 7 · Part 20 · 9/15", "live": false}]}, {"wk": "Week of Feb 12", "items": [{"typ": "REC", "label": "Mon, Feb 12 · Part 20 · 10/15", "live": false}, {"typ": "REC", "label": "Wed, Feb 14 · Part 20 · 11/15", "live": false}]}, {"wk": "Week of Feb 19", "items": [{"typ": "REC", "label": "Mon, Feb 19 · Part 20 · 12/15", "live": false}, {"typ": "REC", "label": "Wed, Feb 21 · Part 20 · 13/15", "live": false}, {"typ": "REC", "label": "Fri, Feb 23 · Part 20 · 14/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Feb 26", "items": [{"typ": "REC", "label": "Mon, Feb 26 · Part 20 · 15/15", "live": false}, {"typ": "REC", "label": "Wed, Feb 28 · Part 21 · 1/15", "live": false}]}]}, {"m": "Mar 2029", "weeks": [{"wk": "Week of Mar 5", "items": [{"typ": "REC", "label": "Mon, Mar 5 · Part 21 · 2/15", "live": false}, {"typ": "REC", "label": "Wed, Mar 7 · Part 21 · 3/15", "live": false}]}, {"wk": "Week of Mar 12", "items": [{"typ": "REC", "label": "Mon, Mar 12 · Part 21 · 4/15", "live": false}, {"typ": "REC", "label": "Wed, Mar 14 · Part 21 · 5/15", "live": false}]}, {"wk": "Week of Mar 19", "items": [{"typ": "REC", "label": "Mon, Mar 19 · Part 21 · 6/15", "live": false}, {"typ": "REC", "label": "Wed, Mar 21 · Part 21 · 7/15", "live": false}, {"typ": "REC", "label": "Fri, Mar 23 · Part 21 · 8/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Mar 26", "items": [{"typ": "REC", "label": "Mon, Mar 26 · Part 21 · 9/15", "live": false}, {"typ": "REC", "label": "Wed, Mar 28 · Part 21 · 10/15", "live": false}]}]}, {"m": "Apr 2029", "weeks": [{"wk": "Week of Apr 2", "items": [{"typ": "REC", "label": "Mon, Apr 2 · Part 21 · 11/15", "live": false}, {"typ": "REC", "label": "Wed, Apr 4 · Part 21 · 12/15", "live": false}]}, {"wk": "Week of Apr 9", "items": [{"typ": "REC", "label": "Mon, Apr 9 · Part 21 · 13/15", "live": false}, {"typ": "REC", "label": "Wed, Apr 11 · Part 21 · 14/15", "live": false}, {"typ": "REC", "label": "Fri, Apr 13 · Part 21 · 15/15 · ★ catch-up", "live": false}]}, {"wk": "Week of Apr 16", "items": [{"typ": "REC", "label": "Mon, Apr 16 · Part 22 · 1/15", "live": false}, {"typ": "REC", "label": "Wed, Apr 18 · Part 22 · 2/15", "live": false}]}, {"wk": "Week of Apr 23", "items": [{"typ": "REC", "label": "Mon, Apr 23 · Part 22 · 3/15", "live": false}, {"typ": "REC", "label": "Wed, Apr 25 · Part 22 · 4/15", "live": false}]}, {"wk": "Week of Apr 30", "items": [{"typ": "REC", "label": "Mon, Apr 30 · Part 22 · 5/15", "live": false}, {"typ": "REC", "label": "Wed, May 2 · Part 22 · 6/15", "live": false}]}]}, {"m": "May 2029", "weeks": [{"wk": "Week of May 7", "items": [{"typ": "REC", "label": "Mon, May 7 · Part 22 · 7/15", "live": false}, {"typ": "REC", "label": "Wed, May 9 · Part 22 · 8/15", "live": false}, {"typ": "REC", "label": "Fri, May 11 · Part 22 · 9/15 · ★ catch-up", "live": false}]}, {"wk": "Week of May 14", "items": [{"typ": "REC", "label": "Mon, May 14 · Part 22 · 10/15", "live": false}, {"typ": "REC", "label": "Wed, May 16 · Part 22 · 11/15", "live": false}]}, {"wk": "Week of May 21", "items": [{"typ": "REC", "label": "Mon, May 21 · Part 22 · 12/15", "live": false}, {"typ": "REC", "label": "Wed, May 23 · Part 22 · 13/15", "live": false}]}, {"wk": "Week of May 28", "items": [{"typ": "REC", "label": "Mon, May 28 · Part 22 · 14/15", "live": false}, {"typ": "REC", "label": "Wed, May 30 · Part 22 · 15/15", "live": false}]}]}], "internship": {"trips": [["intt-mar2027", "Mar 19–26, 2027", "Ayurvedic Formulation Making (Mar 19–21, in-person) + US Internship Segment 1 (Mar 22–26)"], ["intt-jun2027", "Jun 18–25, 2027", "KAA 310 (Jun 18–20, in-person) + US Internship Segment 2 (Jun 21–25)"], ["intt-oct2027", "Oct 8–15, 2027", "KAA 312 (Oct 8–10, in-person) + US Internship Segment 3 (Oct 11–15)"], ["intt-jan2028", "Jan 14–21, 2028", "KAA 314 (Jan 14–16, in-person) + Panchakarma Practicum 1 / KAA 325 (Jan 17–21)"], ["intt-feb2028", "Feb 25 – Mar 3, 2028", "KAA 315 (Feb 25–27, in-person) + US Internship Segment 4 (Feb 28 – Mar 3)"], ["intt-may2028", "May 12–19, 2028", "KAA 317 (May 12–14, in-person) + Panchakarma Practicum 2 / KAA 326 (May 15–19)"], ["intt-jan2029", "Jan 19–26, 2029", "KAA 323 (Jan 19–21, in-person) + US Internship Segment 5 (Jan 22–26)"]], "hours": [["inth-us1", "US Internship Segment 1 — Mar 22–26, 2027", 45], ["inth-us2", "US Internship Segment 2 — Jun 21–25, 2027", 45], ["inth-us3", "US Internship Segment 3 — Oct 11–15, 2027", 45], ["inth-us4", "US Internship Segment 4 — Feb 28 – Mar 3, 2028", 45], ["inth-india150", "India Internship — 150 hr segment — Sep–Oct 2028 (tentative)", 150], ["inth-india130", "India Internship — 130 hr independent — Sep–Oct 2028 (tentative)", 130], ["inth-us5", "US Internship Segment 5 — Jan 22–26, 2029", 45]], "requirements": [["intr-res", "Residency", 100, "Scheduled with Student Support later; in-person"], ["intr-spec", "Specialty Internship", 100, "Independent, in-person, pre-approved"], ["intr-ext", "Externship", 50, "Independent, in-person"]], "seg5": [["Jun 5–9, 2028", "Standalone trip · ~3 wks after May 2028 trip"], ["Sep 25–29, 2028", "Standalone trip · no nearby intensive"], ["Mar 5–9, 2029", "Standalone · KAA 324 is livestream-only"]], "electives": [["inte-pulse", "Ayurvedic Assessment and Pulse Diagnosis", "Oct 9–11, 2026", "In Person (Milpitas)"], ["inte-form", "Ayurvedic Formulation Making", "Mar 19–21, 2027", "In Person (Milpitas) · paired with US Internship 1"]]}};
+
+// ---------- state ----------
+const KEY="aapStudyDashV1";
+let state={};
+try{state=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){state={}}
+if(state["m301-done"]===undefined) state["m301-done"]=true;
+// completed modules: seed their weekend-intensive sessions as attended
+DATA.modules.forEach(m=>{ if(m.status==='done')(m.intensive||[]).forEach(dd=>['am','pm'].forEach(t=>{
+  const id="m"+m.code+"-int-d"+dd.n+t; if(state[id]===undefined)state[id]=true;}));});
+// static content counts for completed modules (no per-item schedule)
+const DONE_COUNTS={"301":{read:13,rec:2,slide:12,test:1}};
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+function on(id){return !!state[id]}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
+const pctOf=(d,t)=>t?Math.round(d/t*100):0;
+
+// pastel track colors
+const C_OVERALL="var(--lav)",C_MOD="var(--mint)",C_FORM="var(--peach)",
+      C_AH="var(--sky)",C_AHL="var(--rose)",C_SAN="var(--butter)",C_INT="var(--sage)",
+      C_AS="var(--teal)";
+
+// ---------- assignments config ----------
+const ASSIGN={
+  rogis:20, herbSheets:10, formRecs:10,
+  consultStages:[["init","Initial Consult"],["f1","1st Follow-Up Consult"],["f2","2nd Follow-Up Consult"]]
+};
+function asIds(){
+  const ids=[];
+  for(let r=1;r<=ASSIGN.rogis;r++)ASSIGN.consultStages.forEach(s=>ids.push("as-c"+r+"-"+s[0]));
+  for(let n=1;n<=ASSIGN.herbSheets;n++)ids.push("as-hb-s"+n); ids.push("as-hb-sub");
+  for(let n=1;n<=ASSIGN.formRecs;n++)ids.push("as-fr-f"+n); ids.push("as-fr-sub");
+  ids.push("as-di-synopsis","as-di-submitted","as-di-approved");
+  return ids;
+}
+function countIds(ids){let d=0;ids.forEach(i=>{if(on(i))d++;});return [d,ids.length];}
+
+// ---------- program timeline (static) ----------
+const TL_MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+// each month -> array of [class, label]; classes: int, trip, elec, study, light, end
+const TL={
+ 2026:{4:[["end","Orientation"]],5:[["int","KAA 301"]],6:[["int","KAA 302"]],
+   7:[["int","KAA 303"],["study","302 study"]],8:[["int","KAA 304"],["study","302 study"]],
+   9:[["study","303 study"]],10:[["elec","Pulse Diagnosis"],["study","304 study"]],11:[["int","KAA 305"]]},
+ 2027:{1:[["int","KAA 306"]],2:[["int","KAA 307"]],
+   3:[["elec","Formulation Making"],["usintern","US Internship 1"]],
+   4:[["int","KAA 308"]],5:[["int","KAA 309"]],
+   6:[["inperson","KAA 310"],["usintern","US Internship 2"]],8:[["int","KAA 311"]],
+   10:[["inperson","KAA 312"],["usintern","US Internship 3"]],11:[["int","KAA 313"]]},
+ 2028:{1:[["inperson","KAA 314"],["inperson","Panchakarma 1"]],
+   2:[["inperson","KAA 315"],["usintern","US Internship 4"]],4:[["int","KAA 316"]],
+   5:[["inperson","KAA 317"],["inperson","Panchakarma 2"]],6:[["int","KAA 318"]],8:[["int","KAA 319"]],
+   9:[["india","India Internship (tent.)"]],10:[["int","KAA 320"],["india","India Internship (tent.)"]],
+   11:[["int","KAA 321"]],12:[["int","KAA 322"]]},
+ 2029:{1:[["inperson","KAA 323"],["usintern","US Internship 5"]],3:[["int","KAA 324"]],
+   4:[["light","Wind-down"]],5:[["light","Wind-down"]],6:[["end","Program ends"]]}
+};
+function renderTimeline(){
+  let head='<div class="tl-h"></div>'+TL_MONTHS.map(m=>`<div class="tl-h">${m}</div>`).join('');
+  let rows='';
+  [2026,2027,2028,2029].forEach(y=>{
+    rows+=`<div class="tl-y">${y}</div>`;
+    for(let mo=1;mo<=12;mo++){
+      const cell=(TL[y]||{})[mo];
+      if(cell&&cell.length){
+        rows+=`<div class="tl-cell">`+cell.map(p=>`<span class="pilltl p-${p[0]}">${esc(p[1])}</span>`).join('')+`</div>`;
+      }else rows+=`<div class="tl-cell empty"></div>`;
+    }
+  });
+  const legend=[["p-int","Weekend intensive (livestream)"],["p-inperson","In person — module / practicum"],
+    ["p-usintern","US internship"],["p-india","India internship (tentative)"],
+    ["p-elec","Elective (Formulation Making, Pulse Diagnosis)"],
+    ["p-study","My study / catch-up"],["p-end","Orientation / program end"]]
+    .map(l=>`<div class="tl-leg"><span class="tl-sw ${l[0]}"></span>${l[1]}</div>`).join('');
+  document.getElementById('timeline').innerHTML=
+    `<div class="tl-title">Program timeline · 2026 – June 2029</div>
+     <div class="tl-scroll"><div class="tl-grid">${head}${rows}</div></div>
+     <div class="tl-legend">${legend}</div>`;
+}
+
+// ---------- svg / bar helpers ----------
+function ring(size,pct,color,val,sub,label,cnt){
+  const pc=Math.max(0,Math.min(pct,100));
+  const sw=size>120?11:9, R=size/2-sw-3, cx=size/2, C=2*Math.PI*R, off=C*(1-pc/100);
+  const vf=size>120?33:25, pf=size>120?13:11;
+  return `<div class="ring" style="width:${size+8}px">
+   <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+     <circle cx="${cx}" cy="${cx}" r="${R}" fill="none" stroke="var(--tw)" stroke-width="${sw}"/>
+     <circle cx="${cx}" cy="${cx}" r="${R}" fill="none" stroke="${color}" stroke-width="${sw}"
+       stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}"
+       transform="rotate(-90 ${cx} ${cx})"/>
+     <text class="rv" x="${cx}" y="${cx-2}" text-anchor="middle" dominant-baseline="middle" style="font-size:${vf}px">${val}</text>
+     <text class="rp" x="${cx}" y="${cx+vf*0.62}" text-anchor="middle" style="font-size:${pf}px">${sub}</text>
+   </svg>
+   <div class="lab">${label}</div><div class="cnt">${cnt}</div></div>`;
+}
+function bar(label,done,total,color,note){
+  const w=Math.min(pctOf(done,total),100);
+  return `<div class="bar-row"><div class="bl">${label}</div>
+    <div class="track"><div class="fill" style="width:${w}%;background:${color}"></div></div>
+    <div class="bc">${note||(done+" / "+total)}</div></div>`;
+}
+function mini(label,done,total,color){
+  const w=Math.min(pctOf(done,total),100);
+  return `<div class="mini"><div class="ml"><span>${label}</span><b>${total?done+"/"+total:"—"}</b></div>
+    <div class="track"><div class="fill" style="width:${w}%;background:${color}"></div></div></div>`;
+}
+// compact labelled bar (part rows); empty label -> 2-col
+function pbar(label,done,total,color){
+  const w=Math.min(pctOf(done,total),100);
+  const lab=label?`<div class="pbl">${label}</div>`:'';
+  return `<div class="pbar${label?'':' nolabel'}">${lab}
+    <div class="track"><div class="fill" style="width:${w}%;background:${color}"></div></div>
+    <div class="pbc">${done}/${total}</div></div>`;
+}
+
+// ---------- metrics ----------
+const M={};
+function modComplete(m){
+  if(m.status==="done")return true;
+  const det=DATA.moduleDetail[m.code]; if(!det)return false;
+  let any=false,all=true;
+  det.forEach(s=>s.items.forEach((it,i)=>{any=true;if(!on("m"+m.code+"-s"+s.num+"-i"+i))all=false;}));
+  return any&&all;
+}
+function intensiveCounts(m){
+  let d=0,t=0;
+  (m.intensive||[]).forEach(dd=>['am','pm'].forEach(x=>{t++;if(on("m"+m.code+"-int-d"+dd.n+x))d++;}));
+  return [d,t];
+}
+function moduleMiniCounts(m){
+  const det=DATA.moduleDetail[m.code];
+  const iv=intensiveCounts(m);
+  if(m.status==="done"){
+    const dc=DONE_COUNTS[m.code]||{read:1,rec:1,slide:1,test:1};
+    return {rd:dc.read,rt:dc.read,ld:dc.rec,lt:dc.rec,sd:dc.slide,st:dc.slide,td:dc.test,tt:dc.test,ivd:iv[0],ivt:iv[1]};
+  }
+  if(!det)return {rd:0,rt:0,ld:0,lt:0,sd:0,st:0,td:0,tt:0,ivd:iv[0],ivt:iv[1]};
+  let rd=0,rt=0,ld=0,lt=0,sd=0,st=0,td=0,tt=0;
+  det.forEach(s=>s.items.forEach((it,i)=>{
+    const c=on("m"+m.code+"-s"+s.num+"-i"+i);
+    if(it.t==='read'){rt++;if(c)rd++;}
+    else if(it.t==='lecture'){lt++;if(c)ld++;}
+    else if(it.t==='slides'){st++;if(c)sd++;}
+    else if(it.t==='test'){tt++;if(c)td++;}
+  }));
+  return {rd,rt,ld,lt,sd,st,td,tt,ivd:iv[0],ivt:iv[1]};
+}
+function fClassDone(part,ci){return on("f"+part+"-"+ci+"-pdf")&&on("f"+part+"-"+ci+"-rec");}
+function sanClassDone(i){return on("san-"+i+"-pdf")&&on("san-"+i+"-rec");}
+
+function computeAll(){
+  M.modDone=0; M.modTotal=DATA.modules.length;
+  DATA.modules.forEach(m=>{if(modComplete(m))M.modDone++;});
+  // formulations — track CLASSES
+  M.fClassD=0;M.fClassT=0;M.formParts={};
+  DATA.formulations.forEach(p=>{let d=0,t=0;
+    p.classes.forEach((c,ci)=>{t++;if(fClassDone(p.part,ci))d++;});
+    M.formParts[p.part]=[d,t];M.fClassD+=d;M.fClassT+=t;});
+  // sanskrit — track CLASSES
+  M.sanD=0;M.sanT=DATA.sanskrit.length;
+  DATA.sanskrit.forEach((c,i)=>{if(sanClassDone(i))M.sanD++;});
+  // ah
+  M.ahRecD=M.ahRecT=M.ahLiveD=M.ahLiveT=0;M.ahRecParts={};M.ahLiveParts={};M.ahMonth={};
+  DATA.ah.forEach((mo,mi)=>{let md=0,mt=0;
+    mo.weeks.forEach((w,wi)=>w.items.forEach((it,ii)=>{
+      const c=on("ah-"+mi+"-"+wi+"-"+ii); mt++; if(c)md++;
+      const pm=it.label.match(/Part (\d+)/),pn=pm?pm[1]:"?";
+      if(it.live){M.ahLiveT++;if(c)M.ahLiveD++;(M.ahLiveParts[pn]=M.ahLiveParts[pn]||[0,0]);M.ahLiveParts[pn][1]++;if(c)M.ahLiveParts[pn][0]++;}
+      else{M.ahRecT++;if(c)M.ahRecD++;(M.ahRecParts[pn]=M.ahRecParts[pn]||[0,0]);M.ahRecParts[pn][1]++;if(c)M.ahRecParts[pn][0]++;}
+    }));
+    M.ahMonth[mi]=[md,mt];});
+  // assignments
+  let cons=[]; for(let r=1;r<=ASSIGN.rogis;r++)ASSIGN.consultStages.forEach(s=>cons.push("as-c"+r+"-"+s[0]));
+  let herb=[]; for(let n=1;n<=ASSIGN.herbSheets;n++)herb.push("as-hb-s"+n); herb.push("as-hb-sub");
+  let form=[]; for(let n=1;n<=ASSIGN.formRecs;n++)form.push("as-fr-f"+n); form.push("as-fr-sub");
+  let diss=["as-di-synopsis","as-di-submitted","as-di-approved"];
+  [M.asConsD,M.asConsT]=countIds(cons); [M.asHerbD,M.asHerbT]=countIds(herb);
+  [M.asFormD,M.asFormT]=countIds(form); [M.asDissD,M.asDissT]=countIds(diss);
+  M.asD=M.asConsD+M.asHerbD+M.asFormD+M.asDissD;
+  M.asT=M.asConsT+M.asHerbT+M.asFormT+M.asDissT;
+  // internship — regular (500 req / 505 planned) + additional (250) = total (750)
+  M.intRegDone=0; DATA.internship.hours.forEach(h=>{if(on(h[0]))M.intRegDone+=h[2];});
+  M.intRegReq=500;
+  M.intAddDone=0; DATA.internship.requirements.forEach(r=>{if(on(r[0]))M.intAddDone+=r[2];});
+  M.intAddReq=250;
+  M.intCombDone=M.intRegDone+M.intAddDone; M.intCombTot=750;
+  // overall = mean of the seven track percentages
+  const ps=[pctOf(M.modDone,M.modTotal),pctOf(M.fClassD,M.fClassT),
+    pctOf(M.ahRecD+M.ahLiveD,M.ahRecT+M.ahLiveT),pctOf(M.sanD,M.sanT),
+    pctOf(M.asD,M.asT),pctOf(M.intRegDone,M.intRegReq),pctOf(M.intAddDone,M.intAddReq)];
+  M.overall=Math.round(ps.reduce((a,b)=>a+b,0)/ps.length);
+}
+
+// ---------- overview ----------
+function renderOverview(){
+  const ahAll=M.ahRecD+M.ahLiveD,ahAllT=M.ahRecT+M.ahLiveT;
+  const big=ring(158,M.overall,C_OVERALL,M.overall+"%","complete","Overall program","the whole certification");
+  const rings=
+    ring(104,pctOf(M.modDone,M.modTotal),C_MOD,M.modDone,"/ "+M.modTotal,"Modules","301–326")+
+    ring(104,pctOf(M.fClassD,M.fClassT),C_FORM,M.fClassD,"/ "+M.fClassT,"Formulations","classes")+
+    ring(104,pctOf(ahAll,ahAllT),C_AH,ahAll,"/ "+ahAllT,"Ashtanga Hridayam","rec + live")+
+    ring(104,pctOf(M.sanD,M.sanT),C_SAN,M.sanD,"/ "+M.sanT,"Sanskrit","classes")+
+    ring(104,pctOf(M.asD,M.asT),C_AS,M.asD,"/ "+M.asT,"Assignments","tasks")+
+    ring(104,pctOf(M.intRegDone,M.intRegReq),C_INT,M.intRegDone,"hr","Clinical Internship","of 500 hr")+
+    ring(104,pctOf(M.intAddDone,M.intAddReq),C_AHL,M.intAddDone,"hr","Res · Spec · Extern","of 250 hr");
+  const bars=
+    bar("Modules",M.modDone,M.modTotal,C_MOD,M.modDone+" of "+M.modTotal+" complete")+
+    bar("Vedic Formulations",M.fClassD,M.fClassT,C_FORM,M.fClassD+" / "+M.fClassT+" classes")+
+    bar("AH — Recordings",M.ahRecD,M.ahRecT,C_AH,M.ahRecD+" / "+M.ahRecT)+
+    bar("AH — Live",M.ahLiveD,M.ahLiveT,C_AHL,M.ahLiveD+" / "+M.ahLiveT)+
+    bar("Sanskrit",M.sanD,M.sanT,C_SAN,M.sanD+" / "+M.sanT+" classes")+
+    bar("Assignments",M.asD,M.asT,C_AS,M.asD+" / "+M.asT+" tasks")+
+    bar("Clinical Internship",M.intRegDone,M.intRegReq,C_INT,M.intRegDone+" / 500 hr")+
+    bar("Residency · Specialty · Externship",M.intAddDone,M.intAddReq,C_AHL,M.intAddDone+" / 250 hr");
+  const ov=document.getElementById('overview');
+  const barsOpen=ov.querySelector('details.bars')?.open;
+  ov.innerHTML=`<div class="ov-head"><span class="ov-title">Program progress</span></div>
+     <div class="ov-grid"><div class="ov-big">${big}</div><div class="rings">${rings}</div></div>
+     <details class="bars"${barsOpen?' open':''}><summary>Full breakdown by track</summary>${bars}</details>`;
+}
+
+// ---------- modules ----------
+function pillHTML(m){
+  if(modComplete(m))return '<span class="pill done">Complete</span>';
+  return m.status==="active"?'<span class="pill active">In progress</span>':'<span class="pill todo">Planned</span>';
+}
+function minisHTML(m){
+  const k=moduleMiniCounts(m);
+  return `${mini("Intensive",k.ivd,k.ivt,"var(--lav)")}${mini("Readings",k.rd,k.rt,"var(--butter)")}${mini("Recordings",k.ld,k.lt,"var(--peach)")}
+    ${mini("Slides",k.sd,k.st,"var(--sky)")}${mini("Test",k.td,k.tt,"var(--mint)")}`;
+}
+function renderIntensive(m){
+  const days=m.intensive||[]; if(!days.length)return '';
+  let rows='';
+  days.forEach(dd=>{
+    const am="m"+m.code+"-int-d"+dd.n+"am", pm="m"+m.code+"-int-d"+dd.n+"pm";
+    rows+=`<div class="arow"><span class="al"><b>${dd.dow}</b> ${esc(dd.date)}</span>
+      <span class="fboxes">
+        <span class="fbox"><input type="checkbox" data-id="${am}" ${on(am)?'checked':''}>AM</span>
+        <span class="fbox"><input type="checkbox" data-id="${pm}" ${on(pm)?'checked':''}>PM</span>
+      </span></div>`;
+  });
+  return `<div class="intensive-block"><div class="intensive-lab">Weekend intensive · ${esc(m.date)}</div>${rows}</div>`;
+}
+function moduleBody(m){
+  const det=DATA.moduleDetail[m.code];
+  let h='<div class="mod-inner">'+renderIntensive(m);
+  if(m.status==="done")
+    return h+`<div class="plan-note">Completed — livestream module finished. All readings, recordings, slides and test signed off.</div></div>`;
+  if(!det)
+    return h+`<div class="plan-note">Monthly study schedule not planned yet. When you begin KAA ${m.code}, add its sessions here and the readings, recorded lectures, slide decks and test will feed the trackers above.</div></div>`;
+  det.forEach(s=>{
+    h+=`<div class="ses"><div class="ses-h"><span class="ses-date">${esc(s.date)}</span>
+       <span class="ses-title">${esc(s.title)}</span>`;
+    if(s.pp)h+=`<span class="ses-pp">${s.pp} pp</span>`;
+    h+=`</div>`;
+    s.items.forEach((it,i)=>{
+      const id="m"+m.code+"-s"+s.num+"-i"+i;
+      h+=`<div class="item${on(id)?' done-row':''}" data-row="${id}">
+        <span class="tag ${it.t}">${it.t==='lecture'?'Rec':it.t}</span>
+        <label class="ck"><input type="checkbox" data-id="${id}" ${on(id)?'checked':''}>
+        <span class="itx">${esc(it.x)}</span></label></div>`;
+    });
+    h+=`</div>`;
+  });
+  return h+'</div>';
+}
+function renderModules(){
+  let h='';
+  DATA.modules.forEach(m=>{
+    h+=`<details class="mod" data-code="${m.code}"><summary>
+      <span class="mcaret">▶</span><span class="mc">KAA ${m.code}</span>
+      <span style="flex:1"><span class="mt">${esc(m.title)}</span>
+        <div class="md">Intensive weekend: ${esc(m.date)}</div>
+        <div class="mini-wrap" data-minis="${m.code}">${minisHTML(m)}</div></span>
+      <span data-pill="${m.code}">${pillHTML(m)}</span>
+    </summary>${moduleBody(m)}</details>`;
+  });
+  return h;
+}
+
+// ---------- formulations (PDF+recording per class; bar tracks classes) ----------
+function renderFormBody(){
+  let body='';
+  DATA.formulations.forEach(p=>{
+    const a=M.formParts[p.part];
+    let rows='';
+    p.classes.forEach((c,ci)=>{
+      const pid="f"+p.part+"-"+ci+"-pdf",rid="f"+p.part+"-"+ci+"-rec";
+      const done=fClassDone(p.part,ci);
+      rows+=`<div class="frow${done?' fdone':''}"><span class="fd">${esc(c.date)}</span>
+        <span class="ft"><b>Class ${ci+1}</b>${esc(c.title)}</span>
+        <span class="fboxes">
+          <span class="fbox"><input type="checkbox" data-id="${pid}" ${on(pid)?'checked':''}>Class PDF</span>
+          <span class="fbox"><input type="checkbox" data-id="${rid}" ${on(rid)?'checked':''}>Recording</span>
+        </span></div>`;
+    });
+    body+=`<details class="sub" data-k="form-${p.part}"><summary><span class="subcaret">▶</span>
+      <span class="sub-name">Part ${p.part}</span>
+      <span class="sub-bar" data-fbar="${p.part}">${pbar("",a[0],a[1],C_FORM)}</span></summary>${rows}</details>`;
+  });
+  return '<div class="form-parts">'+body+'</div>';
+}
+
+// ---------- sanskrit ----------
+function renderSanskrit(){
+  let rows='';
+  DATA.sanskrit.forEach((c,i)=>{
+    const pid="san-"+i+"-pdf",rid="san-"+i+"-rec",done=sanClassDone(i);
+    rows+=`<div class="frow${done?' fdone':''}"><span class="fd">${esc(c.date)}</span>
+      <span class="ft"><b>Class ${c.n}</b>Sanskrit lesson ${c.n}</span>
+      <span class="fboxes">
+        <span class="fbox"><input type="checkbox" data-id="${pid}" ${on(pid)?'checked':''}>Class PDF</span>
+        <span class="fbox"><input type="checkbox" data-id="${rid}" ${on(rid)?'checked':''}>Recording</span>
+      </span></div>`;
+  });
+  return `<div class="san-bar" data-sanbar>${pbar("Classes complete",M.sanD,M.sanT,C_SAN)}</div>${rows}`;
+}
+
+// ---------- ashtanga hridayam (progress bars, not chips) ----------
+function ahBars(){
+  let rec='<div class="pbar-group"><div class="pbar-head">Recordings</div>';
+  Object.keys(M.ahRecParts).sort((a,b)=>a-b).forEach(p=>rec+=pbar("Part "+p,M.ahRecParts[p][0],M.ahRecParts[p][1],C_AH));
+  rec+='</div>';
+  let live='<div class="pbar-group"><div class="pbar-head">Live sessions</div>';
+  Object.keys(M.ahLiveParts).sort((a,b)=>a-b).forEach(p=>live+=pbar("Part "+p,M.ahLiveParts[p][0],M.ahLiveParts[p][1],C_AHL));
+  live+='</div>';
+  return `<div id="ah-bars" class="pbar-cols">${rec}${live}</div>`;
+}
+function renderAhBody(){
+  let body='';
+  DATA.ah.forEach((mo,mi)=>{
+    const a=M.ahMonth[mi];
+    let weeks='';
+    mo.weeks.forEach((w,wi)=>{
+      let its='';
+      w.items.forEach((it,ii)=>{
+        const id="ah-"+mi+"-"+wi+"-"+ii;
+        const lab=it.label.replace(/·/g,'<span class="pt">·</span>');
+        its+=`<div class="witem"><span class="wtag ${it.typ}">${it.typ}</span>
+          <label class="ck"><input type="checkbox" data-id="${id}" ${on(id)?'checked':''}>
+          <span class="wx">${lab}</span></label></div>`;
+      });
+      weeks+=`<div class="week"><div class="wl">${esc(w.wk)}</div><div class="witems">${its}</div></div>`;
+    });
+    body+=`<details class="sub" data-k="ah-${mi}"><summary><span class="subcaret">▶</span>
+      <span class="sub-name">${esc(mo.m)}</span><span class="sub-meta" data-ahmeta="${mi}">${a[0]}/${a[1]}</span></summary>${weeks}</details>`;
+  });
+  return ahBars()+'<div class="ah-months">'+body+'</div>';
+}
+
+// ---------- assignments ----------
+function ckbox(id,label){return `<span class="fbox"><input type="checkbox" data-id="${id}" ${on(id)?'checked':''}>${esc(label)}</span>`;}
+function assignSub(key,name,barDone,barTot,rows){
+  return `<details class="sub" data-k="as-${key}"><summary><span class="subcaret">▶</span>
+    <span class="sub-name">${name}</span>
+    <span class="sub-bar" data-asbar="${key}">${pbar("",barDone,barTot,C_AS)}</span></summary>${rows}</details>`;
+}
+function renderAssignments(){
+  // Consultations — 20 Rogis x 3 stages
+  let cons='';
+  for(let r=1;r<=ASSIGN.rogis;r++){
+    const done=ASSIGN.consultStages.every(s=>on("as-c"+r+"-"+s[0]));
+    let boxes=ASSIGN.consultStages.map(s=>ckbox("as-c"+r+"-"+s[0],s[1])).join('');
+    cons+=`<div class="arow${done?' arowdone':''}"><span class="al"><b>Rogi ${r}</b></span>
+      <span class="fboxes">${boxes}</span></div>`;
+  }
+  // Herbarium — 10 sheets + submitted
+  let herb='';
+  for(let n=1;n<=ASSIGN.herbSheets;n++){const id="as-hb-s"+n;
+    herb+=`<div class="arow${on(id)?' arowdone':''}"><span class="al"><b>Herb Sheet ${n}</b></span>
+      <span class="fboxes">${ckbox(id,"Complete")}</span></div>`;}
+  herb+=`<div class="arow asubmit${on("as-hb-sub")?' arowdone':''}"><span class="al"><b>Herbarium Submitted</b></span>
+    <span class="fboxes">${ckbox("as-hb-sub","Submitted")}</span></div>`;
+  // Formulation Record — 10 + submitted
+  let form='';
+  for(let n=1;n<=ASSIGN.formRecs;n++){const id="as-fr-f"+n;
+    form+=`<div class="arow${on(id)?' arowdone':''}"><span class="al"><b>Formulation ${n}</b></span>
+      <span class="fboxes">${ckbox(id,"Complete")}</span></div>`;}
+  form+=`<div class="arow asubmit${on("as-fr-sub")?' arowdone':''}"><span class="al"><b>Formulation Record Submitted</b></span>
+    <span class="fboxes">${ckbox("as-fr-sub","Submitted")}</span></div>`;
+  // Dissertation
+  const diss=[["as-di-synopsis","Dissertation Synopsis"],["as-di-submitted","Synopsis Submitted"],["as-di-approved","Synopsis Approved"]]
+    .map(x=>`<div class="arow${on(x[0])?' arowdone':''}"><span class="al"><b>${x[1]}</b></span>
+      <span class="fboxes">${ckbox(x[0],"Done")}</span></div>`).join('');
+  return assignSub("cons","Consultations",M.asConsD,M.asConsT,cons)
+       + assignSub("herb","Herbarium",M.asHerbD,M.asHerbT,herb)
+       + assignSub("form","Formulation Record",M.asFormD,M.asFormT,form)
+       + assignSub("diss","Dissertation",M.asDissD,M.asDissT,diss);
+}
+
+// ---------- internship ----------
+function renderInternship(){
+  const I=DATA.internship;
+  // hours summary bars
+  const summary=`<div class="hours-summary">
+    ${bar("Clinical Internship",M.intRegDone,M.intRegReq,C_INT,M.intRegDone+" / 500 hr")}
+    ${bar("Residency · Specialty · Externship",M.intAddDone,M.intAddReq,C_AHL,M.intAddDone+" / 250 hr")}
+    <div class="hours-cap">Clinical Internship = US segments + India internship (505 planned toward the 500 requirement). Residency, Specialty Internship and Externship are tracked separately toward their 250 hours.</div>
+  </div>`;
+  let trips='';I.trips.forEach(t=>{
+    trips+=`<tr><td class="hh"><label class="ck"><input type="checkbox" data-id="${t[0]}" ${on(t[0])?'checked':''}><span>${esc(t[1])}</span></label></td><td>${esc(t[2])}</td></tr>`;});
+  let hrows='';I.hours.forEach(h=>{
+    hrows+=`<tr><td><label class="ck"><input type="checkbox" data-id="${h[0]}" ${on(h[0])?'checked':''}>
+      <span>${esc(h[1])}</span></label></td><td class="hh">${h[2]} hr</td></tr>`;});
+  let reqrows='';I.requirements.forEach(r=>{
+    reqrows+=`<tr><td><label class="ck"><input type="checkbox" data-id="${r[0]}" ${on(r[0])?'checked':''}>
+      <span>${esc(r[1])}</span></label></td><td class="hh">${r[2]} hr</td><td>${esc(r[3])}</td></tr>`;});
+  let seg5='';I.seg5.forEach(s=>seg5+=`<div class="opt"><b>${esc(s[0])}</b> — ${esc(s[1])}</div>`);
+  let elec='';I.electives.forEach(e=>{
+    elec+=`<tr><td class="hh"><label class="ck"><input type="checkbox" data-id="${e[0]}" ${on(e[0])?'checked':''}><span>${esc(e[1])}</span></label></td><td>${esc(e[2])}</td><td>${esc(e[3])}</td></tr>`;});
+  return `<div style="padding:6px 4px 4px">
+    ${summary}
+    <div class="blocklab">Combined Milpitas trips</div>
+    <table class="itab"><thead><tr><th>Trip dates</th><th>Events covered</th></tr></thead><tbody>${trips}</tbody></table>
+    <div class="blocklab">Clinical Internship hours — check off as completed</div>
+    <table class="itab"><thead><tr><th>Component</th><th>Hours</th></tr></thead><tbody>${hrows}
+      <tr><td class="hh">Clinical total</td><td class="hh">505 hr</td></tr></tbody></table>
+    <div class="blocklab">Residency · Specialty · Externship — tracked toward 250 hours</div>
+    <table class="itab"><thead><tr><th>Requirement</th><th>Hours</th><th>Notes</th></tr></thead><tbody>${reqrows}
+      <tr><td class="hh">Additional total</td><td class="hh">250 hr</td><td></td></tr></tbody></table>
+    <div class="blocklab">Alternate internship options — kept as backup</div>
+    <div class="opt" style="border-top:none"><b>Selected:</b> Mar 22–26, 2027 is now US Internship Segment 1.</div>${seg5}
+    <div class="blocklab">Elective courses</div>
+    <table class="itab"><thead><tr><th>Course</th><th>Dates</th><th>Format</th></tr></thead><tbody>${elec}</tbody></table>
+  </div>`;
+}
+
+// ---------- sections ----------
+function secBarHTML(key){
+  const map={mod:[M.modDone,M.modTotal,C_MOD],form:[M.fClassD,M.fClassT,C_FORM],
+    ah:[M.ahRecD+M.ahLiveD,M.ahRecT+M.ahLiveT,C_AH],san:[M.sanD,M.sanT,C_SAN],
+    as:[M.asD,M.asT,C_AS],int:[M.intCombDone,M.intCombTot,C_INT]};
+  const v=map[key],pct=pctOf(v[0],v[1]);
+  return `<div class="track"><div class="fill" style="width:${pct}%;background:${v[2]}"></div></div>`;
+}
+function updateSecBars(){['mod','form','ah','san','as','int'].forEach(k=>{
+  const el=document.querySelector('[data-secbar="'+k+'"]'); if(el)el.innerHTML=secBarHTML(k);});}
+function refreshMeta(){
+  updateSecBars();
+  document.getElementById('meta-mod').textContent=M.modDone+" / "+M.modTotal+" complete";
+  document.getElementById('meta-form').textContent=M.fClassD+" / "+M.fClassT+" classes";
+  document.getElementById('meta-san').textContent=M.sanD+" / "+M.sanT+" classes";
+  document.getElementById('meta-ah').textContent=(M.ahRecD+M.ahLiveD)+" / "+(M.ahRecT+M.ahLiveT);
+  document.getElementById('meta-as').textContent=M.asD+" / "+M.asT+" tasks";
+  document.getElementById('meta-int').textContent=M.intRegDone+"/500 · "+M.intAddDone+"/250 hr";
+}
+function build(){
+  computeAll();
+  document.getElementById('sections').innerHTML=`
+  <details class="sec section" open id="sec-mod"><summary><span class="sec-caret">▶</span>
+    <span class="sec-name">Modules — KAA 301–326</span><span class="sec-bar" data-secbar="mod"></span><span class="sec-meta" id="meta-mod"></span></summary>
+    <div class="sec-body" id="body-mod"></div></details>
+  <details class="sec section" id="sec-form"><summary><span class="sec-caret">▶</span>
+    <span class="sec-name">Vedic Formulations</span><span class="sec-bar" data-secbar="form"></span><span class="sec-meta" id="meta-form"></span></summary>
+    <div class="sec-body"><div class="plan-note">6 parts · 71 classes. Each class has a Class PDF and a recording; a part's bar fills as classes are completed (both boxes). Every other Saturday for Part 1 Classes 1–5, then the 1st / 3rd / 5th Thursday from Class 6 onward.</div><div id="body-form"></div></div></details>
+  <details class="sec section" id="sec-ah"><summary><span class="sec-caret">▶</span>
+    <span class="sec-name">Ashtanga Hridayam</span><span class="sec-bar" data-secbar="ah"></span><span class="sec-meta" id="meta-ah"></span></summary>
+    <div class="sec-body"><div class="plan-note">Weekly · Aug 2026 – May 2029. Recordings Mon/Wed (3-rec catch-up weeks add a Fri ★). On live weeks the recording is Monday and the live session is Wednesday, 6:00–7:30 pm Pacific.</div><div id="body-ah"></div></div></details>
+  <details class="sec section" id="sec-san"><summary><span class="sec-caret">▶</span>
+    <span class="sec-name">Sanskrit</span><span class="sec-bar" data-secbar="san"></span><span class="sec-meta" id="meta-san"></span></summary>
+    <div class="sec-body"><div class="plan-note">15 classes — one per month on the 2nd Saturday (Aug 2026 – Oct 2027). Each class has a Class PDF and a recording. Adjust the cadence any time.</div><div id="body-san"></div></div></details>
+  <details class="sec section" id="sec-as"><summary><span class="sec-caret">▶</span>
+    <span class="sec-name">Assignments</span><span class="sec-bar" data-secbar="as"></span><span class="sec-meta" id="meta-as"></span></summary>
+    <div class="sec-body"><div class="plan-note">Clinical and written deliverables — consultations, herbarium, formulation record and dissertation. Each sub-section fills its own bar.</div><div id="body-as"></div></div></details>
+  <details class="sec section" id="sec-int"><summary><span class="sec-caret">▶</span>
+    <span class="sec-name">Internship &amp; Trips</span><span class="sec-bar" data-secbar="int"></span><span class="sec-meta" id="meta-int"></span></summary>
+    <div class="sec-body" id="body-int"></div></details>`;
+  document.getElementById('body-mod').innerHTML=renderModules();
+  document.getElementById('body-form').innerHTML=renderFormBody();
+  document.getElementById('body-ah').innerHTML=renderAhBody();
+  document.getElementById('body-san').innerHTML=renderSanskrit();
+  document.getElementById('body-as').innerHTML=renderAssignments();
+  document.getElementById('body-int').innerHTML=renderInternship();
+  renderTimeline(); renderOverview(); refreshMeta();
+}
+
+// ---------- targeted update on toggle ----------
+function updateModuleCard(code){
+  const m=DATA.modules.find(x=>x.code===code); if(!m)return;
+  const minis=document.querySelector('[data-minis="'+code+'"]'); if(minis)minis.innerHTML=minisHTML(m);
+  const pill=document.querySelector('[data-pill="'+code+'"]'); if(pill)pill.innerHTML=pillHTML(m);
+}
+function handleToggle(id){
+  computeAll(); renderOverview(); refreshMeta();
+  if(id[0]==='m'){
+    const code=id.slice(1,4);
+    const row=document.querySelector('[data-row="'+id+'"]'); if(row)row.classList.toggle('done-row',on(id));
+    updateModuleCard(code);
+  }else if(id[0]==='f'){
+    const part=id.split('-')[0].slice(1),ci=id.split('-')[1];
+    const a=M.formParts[part];
+    const fb=document.querySelector('[data-fbar="'+part+'"]'); if(fb)fb.innerHTML=pbar("",a[0],a[1],C_FORM);
+    const row=document.querySelectorAll('[data-k="form-'+part+'"] .frow')[ci]; if(row)row.classList.toggle('fdone',fClassDone(part,ci));
+  }else if(id.slice(0,4)==='san-'){
+    const i=+id.split('-')[1];
+    const sb=document.querySelector('[data-sanbar]'); if(sb)sb.innerHTML=pbar("Classes complete",M.sanD,M.sanT,C_SAN);
+    const row=document.querySelectorAll('#body-san .frow')[i]; if(row)row.classList.toggle('fdone',sanClassDone(i));
+  }else if(id.slice(0,3)==='ah-'){
+    const mi=id.split('-')[1];
+    const ab=document.getElementById('ah-bars'); if(ab)ab.outerHTML=ahBars();
+    const am=document.querySelector('[data-ahmeta="'+mi+'"]'); if(am){const a=M.ahMonth[mi];am.textContent=a[0]+"/"+a[1];}
+  }else if(id.slice(0,3)==='as-'){
+    let key='diss';
+    if(id.slice(0,4)==='as-c')key='cons';
+    else if(id.slice(0,5)==='as-hb')key='herb';
+    else if(id.slice(0,5)==='as-fr')key='form';
+    const counts={cons:[M.asConsD,M.asConsT],herb:[M.asHerbD,M.asHerbT],
+                  form:[M.asFormD,M.asFormT],diss:[M.asDissD,M.asDissT]}[key];
+    const b=document.querySelector('[data-asbar="'+key+'"]'); if(b)b.innerHTML=pbar("",counts[0],counts[1],C_AS);
+    if(key==='cons'){
+      const r=+id.slice(4).split('-')[0];
+      const done=ASSIGN.consultStages.every(s=>on("as-c"+r+"-"+s[0]));
+      const row=document.querySelectorAll('[data-k="as-cons"] .arow')[r-1]; if(row)row.classList.toggle('arowdone',done);
+    }else{
+      const cb=document.querySelector('input[data-id="'+id+'"]');
+      const row=cb&&cb.closest('.arow'); if(row)row.classList.toggle('arowdone',on(id));
+    }
+  }else if(id.slice(0,3)==='int'){
+    document.getElementById('body-int').innerHTML=renderInternship();
+  }
+}
+
+// ---------- events ----------
+document.addEventListener('change',e=>{
+  const cb=e.target;
+  if(cb&&cb.matches&&cb.matches('input[type=checkbox][data-id]')){
+    state[cb.dataset.id]=cb.checked; save(); handleToggle(cb.dataset.id);
+  }
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  if(confirm('Reset all progress on this dashboard?')){
+    state={}; state["m301-done"]=true; save(); build();
+  }
+});
+
+// ---------- back up / restore (cross-device) ----------
+function encodeState(){
+  const keys=Object.keys(state).filter(k=>state[k]);
+  return "AAP1:"+btoa(unescape(encodeURIComponent(JSON.stringify(keys))));
+}
+function decodeState(code){
+  code=(code||"").trim();
+  if(code.indexOf("AAP1:")===0)code=code.slice(5);
+  const keys=JSON.parse(decodeURIComponent(escape(atob(code))));
+  if(!Array.isArray(keys))throw new Error("bad");
+  const ns={}; keys.forEach(k=>ns[k]=true); ns["m301-done"]=true; return ns;
+}
+const modal=document.getElementById('modal');
+const mTitle=document.getElementById('modalTitle'),mNote=document.getElementById('modalNote'),
+      mText=document.getElementById('modalText'),mPrimary=document.getElementById('modalPrimary'),
+      mMsg=document.getElementById('modalMsg');
+function closeModal(){modal.classList.remove('open');mMsg.textContent='';mMsg.className='modal-msg';}
+document.getElementById('modalClose').addEventListener('click',closeModal);
+modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
+
+document.getElementById('backupBtn').addEventListener('click',()=>{
+  const n=Object.keys(state).filter(k=>state[k]).length;
+  mTitle.textContent="Back up progress";
+  mNote.innerHTML="Copy this code, then open the dashboard on your other device (your iCloud file syncs everywhere) and use <b>Restore</b>. "+n+" items checked.";
+  mText.value=encodeState(); mText.readOnly=true;
+  mPrimary.textContent="Copy code"; mMsg.textContent='';mMsg.className='modal-msg';
+  modal.classList.add('open'); mText.focus(); mText.select();
+  mPrimary.onclick=async()=>{
+    mText.select();
+    try{await navigator.clipboard.writeText(mText.value);mMsg.textContent="Copied to clipboard ✓";}
+    catch(e){try{document.execCommand('copy');mMsg.textContent="Copied ✓";}
+      catch(_){mMsg.textContent="Select the code above and copy manually.";}}
+  };
+});
+document.getElementById('restoreBtn').addEventListener('click',()=>{
+  mTitle.textContent="Restore progress";
+  mNote.innerHTML="Paste a backup code from another device and load it. <b>This replaces the progress currently on this device.</b>";
+  mText.value=""; mText.readOnly=false;
+  mPrimary.textContent="Load progress"; mMsg.textContent='';mMsg.className='modal-msg';
+  modal.classList.add('open'); mText.focus();
+  mPrimary.onclick=()=>{
+    try{const ns=decodeState(mText.value); state=ns; save(); build();
+      mMsg.className='modal-msg'; mMsg.textContent="Loaded ✓"; setTimeout(closeModal,700);}
+    catch(e){mMsg.className='modal-msg err'; mMsg.textContent="That code didn't read correctly — check you copied all of it.";}
+  };
+});
+
+// ---------- init ----------
+build();
+
+</script>
+</body>
+</html>
