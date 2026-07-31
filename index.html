@@ -263,7 +263,7 @@ button.reset:hover{color:var(--lav);border-color:var(--lav)}
   <div id="sections"></div>
 
   <div class="foot">
-    <span>Progress saves automatically on this device. To move it to another device, use&nbsp;Back&nbsp;up&nbsp;→&nbsp;Restore.</span>
+    <span>Progress syncs automatically across your devices. To move it to another device, use&nbsp;Back&nbsp;up&nbsp;→&nbsp;Restore.</span>
     <span class="foot-btns">
       <button class="reset" id="backupBtn">⭱ Back up</button>
       <button class="reset" id="restoreBtn">⭳ Restore</button>
@@ -873,6 +873,39 @@ document.getElementById('restoreBtn').addEventListener('click',()=>{
 // ---------- init ----------
 build();
 
+</script>
+<script id="aap-sync">
+(function(){
+  var DB="https://aap-dashboard-fa854-default-rtdb.firebaseio.com/aapState.json";
+  var KEY="aapStudyDashV1", TKEY="aapStudyDashV1_ts";
+  var pushT=null, booted=false;
+  function localTs(){ return +(localStorage.getItem(TKEY)||0); }
+  function setTs(t){ localStorage.setItem(TKEY, String(t)); }
+  function pull(){
+    fetch(DB,{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){
+      if(!d||typeof d!=='object'||!d.ts||!d.state) return;
+      if(d.ts>localTs()){
+        localStorage.setItem(KEY, JSON.stringify(d.state));
+        setTs(d.ts);
+        location.reload();
+      }
+    }).catch(function(){});
+  }
+  function pushNow(){
+    try{
+      var st=localStorage.getItem(KEY)||'{}';
+      var ts=Date.now(); setTs(ts);
+      fetch(DB,{method:'PUT',body:JSON.stringify({state:JSON.parse(st),ts:ts}),keepalive:true}).catch(function(){});
+    }catch(e){}
+  }
+  function schedulePush(){ if(!booted) return; clearTimeout(pushT); pushT=setTimeout(pushNow,900); }
+  try{ if(typeof save==='function'){ var _s=save; save=function(){ _s.apply(this,arguments); schedulePush(); }; } }catch(e){}
+  setTimeout(function(){ booted=true; },1500);
+  ['change','click'].forEach(function(ev){ document.addEventListener(ev,function(){ booted=true; }, true); });
+  pull();
+  window.addEventListener('focus', pull);
+  document.addEventListener('visibilitychange', function(){ if(document.hidden){ clearTimeout(pushT); if(booted) pushNow(); } else { pull(); } });
+})();
 </script>
 </body>
 </html>
