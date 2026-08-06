@@ -903,6 +903,7 @@ build();
   setTimeout(function(){ booted=true; },1500);
   ['change','click'].forEach(function(ev){ document.addEventListener(ev,function(){ booted=true; }, true); });
   pull();
+  setInterval(pull, 15000);
   window.addEventListener('focus', pull);
   document.addEventListener('visibilitychange', function(){ if(document.hidden){ clearTimeout(pushT); if(booted) pushNow(); } else { pull(); } });
 })();
