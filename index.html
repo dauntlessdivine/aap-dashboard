@@ -265,6 +265,7 @@ button.reset:hover{color:var(--lav);border-color:var(--lav)}
   <div class="foot">
     <span>Progress syncs automatically across your devices. To move it to another device, use&nbsp;Back&nbsp;up&nbsp;→&nbsp;Restore.</span>
     <span class="foot-btns">
+      <button class="reset" id="syncBtn">⟳ Sync now</button>
       <button class="reset" id="backupBtn">⭱ Back up</button>
       <button class="reset" id="restoreBtn">⭳ Restore</button>
       <button class="reset" id="resetBtn">Reset</button>
@@ -905,6 +906,8 @@ build();
   pull();
   setInterval(pull, 15000);
   window.addEventListener('focus', pull);
+  window.aapForceSync=function(btn){ fetch(DB,{cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d&&d.ts&&d.state&&d.ts>localTs()){ localStorage.setItem(KEY,JSON.stringify(d.state)); setTs(d.ts); location.reload(); } else if(btn){ var t=btn.getAttribute('data-lbl')||btn.textContent; btn.setAttribute('data-lbl',t); btn.textContent='✓ Up to date'; setTimeout(function(){btn.textContent=t;},1500); } }).catch(function(){ if(btn){ var t=btn.getAttribute('data-lbl')||btn.textContent; btn.setAttribute('data-lbl',t); btn.textContent='⚠ Offline'; setTimeout(function(){btn.textContent=t;},1500);} }); };
+  var _sb=document.getElementById('syncBtn'); if(_sb){ _sb.addEventListener('click',function(){ window.aapForceSync(_sb); }); }
   document.addEventListener('visibilitychange', function(){ if(document.hidden){ clearTimeout(pushT); if(booted) pushNow(); } else { pull(); } });
 })();
 </script>
